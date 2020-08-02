@@ -26,7 +26,7 @@
             "WARNING16": "button at the bottom of this file.",
             "WARNING17": "*********************************************************************************",
             "preLaunchTask": "build",
-            "program": "${workspaceFolder}/HDB.Server/bin/Debug/netcoreapp3.1/HDB.Server.dll",
+            "program": "${workspaceFolder}/HDBCLI/bin/Debug/netcoreapp3.1/HDBCLI.dll",
             "args": [],
             "cwd": "${workspaceFolder}",
             "console": "internalConsole",

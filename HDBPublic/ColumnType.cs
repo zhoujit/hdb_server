@@ -1,4 +1,4 @@
-namespace HDB.Public
+namespace HDBPublic
 {
     public enum ColumnType
     {
