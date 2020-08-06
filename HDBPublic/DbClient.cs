@@ -21,7 +21,7 @@ namespace HDBPublic
         public static event EventHandler<BeforeRequestArgs> BeforeRequest;
         public static event EventHandler<AfterResponseArgs> AfterResponse;
 
-        public event EventHandler<BatchAddProgressArgs> BatchAddProgress;
+        public event EventHandler<BatchRequestProgressArgs> BatchRequestProgress;
 
 
         public DbClient(string hostName, int port)
@@ -31,185 +31,56 @@ namespace HDBPublic
             m_requestClient = new RequestClient(hostName, port);
         }
 
-        public void BatchAdd(string tableName, List<Dictionary<string, object>> fieldValues)
+        public void Add(string tableName, List<Dictionary<string, object>> fieldValues)
         {
-            XmlDocument doc = new XmlDocument();
-            doc.LoadXml("<Msg></Msg>");
-            XmlNode msgNode = doc.SelectSingleNode("/Msg");
-            XmlHelper.AddAttribute(msgNode, "Op", OpType.Add.ToString());
-            if (!string.IsNullOrEmpty(tableName))
+            RequestData(OpType.Add, tableName, fieldValues);
+        }
+
+        public void Update(string tableName, List<Dictionary<string, object>> fieldValues)
+        {
+            RequestData(OpType.Update, tableName, fieldValues);
+        }
+
+        public void Delete(string tableName, List<Dictionary<string, object>> fieldValues)
+        {
+            RequestData(OpType.Del, tableName, fieldValues);
+        }
+
+        public DataTable Query(string tableName, List<Dictionary<string, object>> fieldValues)
+        {
+            DataTable dtResult = new DataTable();
+            List<string> responseResult = RequestData(OpType.Get, tableName, fieldValues);
+            foreach (string responseText in responseResult)
             {
-                XmlHelper.AddAttribute(msgNode, "Table", tableName);
-            }
+                XmlDocument doc = new XmlDocument();
+                doc.LoadXml(responseText);
+                XmlNodeList nodeList = doc.SelectNodes("/Result/Data");
 
-            const int ProgressCount = 10000;
-            const int MaxBatchCount = 2000;
-            int cnt = 0;
-            foreach (Dictionary<string, object> fieldValueMap in fieldValues)
-            {
-                cnt++;
-                if (fieldValueMap != null)
+                foreach (XmlNode node in nodeList)
                 {
-                    XmlNode dataNode = doc.CreateElement("Data");
-                    msgNode.AppendChild(dataNode);
-                    foreach (string key in fieldValueMap.Keys)
+                    if (dtResult.Columns.Count == 0)
                     {
-                        string val = ConvertValueToString(fieldValueMap[key]);
-                        XmlHelper.AddSubNode(dataNode, key, val);
-                    }
-                }
-
-                if (cnt % MaxBatchCount == 0)
-                {
-                    string responseXml = SendMsg(doc);
-                    XmlDocument docResponse = new XmlDocument();
-                    docResponse.LoadXml(responseXml);
-                    XmlNode statusNode = docResponse.SelectSingleNode("/Result/@Status");
-                    if (statusNode == null)
-                    {
-                        throw new ApplicationException("Invalid response.");
-                    }
-                    if (statusNode.InnerText != "1")
-                    {
-                        throw new ApplicationException(string.Format("Request failed: {0}",
-                            docResponse.SelectSingleNode("/Result/@StatusText").InnerText));
-                    }
-
-                    if (cnt % ProgressCount == 0)
-                    {
-                        if (BatchAddProgress != null)
+                        foreach (XmlNode tempNode in node.ChildNodes)
                         {
-                            BatchAddProgress(null, new BatchAddProgressArgs(fieldValues.Count, cnt));
+                            dtResult.Columns.Add(tempNode.Name);
                         }
                     }
 
-                    doc = new XmlDocument();
-                    doc.LoadXml("<Msg></Msg>");
-                    msgNode = doc.SelectSingleNode("/Msg");
-                    XmlHelper.AddAttribute(msgNode, "Op", OpType.Add.ToString());
-                    if (!string.IsNullOrEmpty(tableName))
-                    {
-                        XmlHelper.AddAttribute(msgNode, "Table", tableName);
-                    }
-                }
-            }
-
-            if (fieldValues.Count % MaxBatchCount != 0)
-            {
-                string responseXml = SendMsg(doc);
-                XmlDocument docResponse = new XmlDocument();
-                docResponse.LoadXml(responseXml);
-                XmlNode statusNode = docResponse.SelectSingleNode("/Result/@Status");
-                if (statusNode == null)
-                {
-                    throw new ApplicationException("Invalid response.");
-                }
-                if (statusNode.InnerText != "1")
-                {
-                    throw new ApplicationException(string.Format("Request failed: {0}",
-                        docResponse.SelectSingleNode("/Result/@StatusText").InnerText));
-                }
-            }
-        }
-
-        private static string ConvertValueToString(object obj)
-        {
-            if (obj == null) return null;
-
-            string val = null;
-            if (obj is DateTime)
-            {
-                val = Convert.ToDateTime(obj).ToString("yyyyMMdd");
-            }
-            else if (obj is float || obj is double || obj is decimal)
-            {
-                val = Convert.ToDouble(obj).ToString("0.#####");
-            }
-            else if (obj is byte || obj is Int16 || obj is Int32)
-            {
-                val = Convert.ToInt32(obj).ToString();
-            }
-            else if (obj is long || obj is Int64)
-            {
-                val = Convert.ToInt64(obj).ToString();
-            }
-            else if (obj is string)
-            {
-                val = obj.ToString();
-            }
-            else
-            {
-                throw new NotSupportedException(string.Format("Cannot support this data type: {0}", obj.GetType().FullName));
-            }
-
-            return val;
-        }
-
-        public void Add(string tableName, Dictionary<string, object> fieldValueMap)
-        {
-            Dictionary<string, string> newValueMap = new Dictionary<string, string>();
-            foreach (string key in fieldValueMap.Keys)
-            {
-                string val = ConvertValueToString(fieldValueMap[key]);
-                newValueMap.Add(key, val);
-            }
-
-            Add(tableName, newValueMap);
-        }
-
-        public void Add(string tableName, Dictionary<string, string> fieldValueMap)
-        {
-            RequestData(OpType.Add, tableName, fieldValueMap);
-        }
-
-        public void Update(string tableName, Dictionary<string, string> fieldValueMap)
-        {
-            RequestData(OpType.Update, tableName, fieldValueMap);
-        }
-
-        public void Delete(string tableName, Dictionary<string, string> fieldValueMap)
-        {
-            RequestData(OpType.Del, tableName, fieldValueMap);
-        }
-
-        public DataTable Query(string tableName, Dictionary<string, string> fieldValueMap)
-        {
-            DataTable dtResult = new DataTable();
-            string responseText = RequestData(OpType.Get, tableName, fieldValueMap);
-            XmlDocument doc = new XmlDocument();
-            doc.LoadXml(responseText);
-            XmlNodeList nodeList = doc.SelectNodes("/Result/Data");
-
-            foreach (XmlNode node in nodeList)
-            {
-                if (dtResult.Columns.Count == 0)
-                {
+                    DataRow drNew = dtResult.NewRow();
                     foreach (XmlNode tempNode in node.ChildNodes)
                     {
-                        dtResult.Columns.Add(tempNode.Name);
+                        XmlNode nilNode = tempNode.SelectSingleNode("@Nil");
+                        if (nilNode != null && nilNode.InnerText == "1")
+                        {
+                            continue;
+                        }
+                        drNew[tempNode.Name] = tempNode.InnerText;
                     }
+                    dtResult.Rows.Add(drNew);
                 }
-
-                DataRow drNew = dtResult.NewRow();
-                foreach (XmlNode tempNode in node.ChildNodes)
-                {
-                    XmlNode nilNode = tempNode.SelectSingleNode("@Nil");
-                    if (nilNode != null && nilNode.InnerText == "1")
-                    {
-                        continue;
-                    }
-                    drNew[tempNode.Name] = tempNode.InnerText;
-                }
-                dtResult.Rows.Add(drNew);
             }
 
             return dtResult;
-        }
-
-        public string QueryAsString(string tableName, Dictionary<string, string> fieldValueMap)
-        {
-            string responseText = RequestData(OpType.Get, tableName, fieldValueMap);
-            return responseText;
         }
 
         public bool Hi(out string result)
@@ -232,13 +103,13 @@ namespace HDBPublic
         public string GetTableList()
         {
             // <Msg Op='GetTableList'></Msg>
-            return RequestData(OpType.GetTableList, null, null);
+            return RequestData(OpType.GetTableList, null);
         }
 
         public string RemoveTable(string tableName)
         {
             // <Msg Op='RemoveTable' Table='Issuers2'></Msg>
-            return RequestData(OpType.RemoveTable, tableName, null);
+            return RequestData(OpType.RemoveTable, tableName);
         }
 
         public void CreateTable(string tableName, DataTable dt)
@@ -282,7 +153,7 @@ namespace HDBPublic
             }
         }
 
-        private string RequestData(OpType op, string tableName, Dictionary<string, string> fieldValueMap)
+        private string RequestData(OpType op, string tableName)
         {
             XmlDocument doc = new XmlDocument();
             doc.LoadXml("<Msg></Msg>");
@@ -291,14 +162,6 @@ namespace HDBPublic
             if (!string.IsNullOrEmpty(tableName))
             {
                 XmlHelper.AddAttribute(msgNode, "Table", tableName);
-            }
-
-            if (fieldValueMap != null)
-            {
-                foreach (string key in fieldValueMap.Keys)
-                {
-                    XmlHelper.AddSubNode(msgNode, key, fieldValueMap[key]);
-                }
             }
 
             string responseXml = SendMsg(doc);
@@ -316,6 +179,75 @@ namespace HDBPublic
             }
 
             return responseXml;
+        }
+
+        public List<string> RequestData(OpType op, string tableName, List<Dictionary<string, object>> fieldValues)
+        {
+            XmlDocument doc = new XmlDocument();
+            doc.LoadXml("<Msg></Msg>");
+            XmlNode msgNode = doc.SelectSingleNode("/Msg");
+            XmlHelper.AddAttribute(msgNode, "Op", op.ToString());
+            if (!string.IsNullOrEmpty(tableName))
+            {
+                XmlHelper.AddAttribute(msgNode, "Table", tableName);
+            }
+
+            List<string> result = new List<string>();
+            const int ProgressCount = 10000;
+            const int MaxBatchCount = 2000;
+            int currentCount = 0;
+            int totalCount = fieldValues.Count;
+            foreach (Dictionary<string, object> fieldValueMap in fieldValues)
+            {
+                currentCount++;
+                if (fieldValueMap != null)
+                {
+                    XmlNode dataNode = doc.CreateElement("Data");
+                    msgNode.AppendChild(dataNode);
+                    foreach (string key in fieldValueMap.Keys)
+                    {
+                        string val = ConvertValueToString(fieldValueMap[key]);
+                        XmlHelper.AddSubNode(dataNode, key, val);
+                    }
+                }
+
+                if (currentCount % MaxBatchCount == 0 || currentCount == totalCount)
+                {
+                    string responseXml = SendMsg(doc);
+                    XmlDocument docResponse = new XmlDocument();
+                    docResponse.LoadXml(responseXml);
+                    XmlNode statusNode = docResponse.SelectSingleNode("/Result/@Status");
+                    if (statusNode == null)
+                    {
+                        throw new ApplicationException("Invalid response.");
+                    }
+                    if (statusNode.InnerText != "1")
+                    {
+                        throw new ApplicationException(string.Format("Request failed: {0}",
+                            docResponse.SelectSingleNode("/Result/@StatusText").InnerText));
+                    }
+
+                    if (currentCount % ProgressCount == 0)
+                    {
+                        if (BatchRequestProgress != null)
+                        {
+                            BatchRequestProgress(null, new BatchRequestProgressArgs(totalCount, currentCount));
+                        }
+                    }
+
+                    doc = new XmlDocument();
+                    doc.LoadXml("<Msg></Msg>");
+                    msgNode = doc.SelectSingleNode("/Msg");
+                    XmlHelper.AddAttribute(msgNode, "Op", OpType.Add.ToString());
+                    if (!string.IsNullOrEmpty(tableName))
+                    {
+                        XmlHelper.AddAttribute(msgNode, "Table", tableName);
+                    }
+
+                    result.Add(responseXml);
+                }
+            }
+            return result;
         }
 
         private string SendMsg(XmlDocument msg)
@@ -359,7 +291,7 @@ namespace HDBPublic
                         {
                             if (stepTime.Elapsed.TotalSeconds > 30)
                             {
-                                throw new TimeoutException("接收服务器端的数据时超时！");
+                                throw new TimeoutException("Receive timeout.");
                             }
                             int byteCount = stream.Read(buff, 0, MaxBuffSize);
                             if (byteCount > 0)
@@ -423,6 +355,38 @@ namespace HDBPublic
             return responseText.Substring(tempPos + 2);
         }
 
+        private static string ConvertValueToString(object obj)
+        {
+            if (obj == null) return null;
+
+            string val = null;
+            if (obj is DateTime)
+            {
+                val = Convert.ToDateTime(obj).ToString("yyyyMMdd");
+            }
+            else if (obj is float || obj is double || obj is decimal)
+            {
+                val = Convert.ToDouble(obj).ToString("0.#####");
+            }
+            else if (obj is byte || obj is Int16 || obj is Int32)
+            {
+                val = Convert.ToInt32(obj).ToString();
+            }
+            else if (obj is long || obj is Int64)
+            {
+                val = Convert.ToInt64(obj).ToString();
+            }
+            else if (obj is string)
+            {
+                val = obj.ToString();
+            }
+            else
+            {
+                throw new NotSupportedException(string.Format("Cannot support this data type: {0}", obj.GetType().FullName));
+            }
+
+            return val;
+        }
 
     }
 
@@ -448,12 +412,12 @@ namespace HDBPublic
         }
     }
 
-    public class BatchAddProgressArgs : EventArgs
+    public class BatchRequestProgressArgs : EventArgs
     {
         public readonly int TotalCount;
         public readonly int CompleteCount;
 
-        public BatchAddProgressArgs(int totalCount, int completeCount)
+        public BatchRequestProgressArgs(int totalCount, int completeCount)
         {
             this.TotalCount = totalCount;
             this.CompleteCount = completeCount;
