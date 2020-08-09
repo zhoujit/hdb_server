@@ -18,10 +18,10 @@ namespace HDBPublic
         private int m_port;
         private RequestClient m_requestClient;
 
-        public static event EventHandler<BeforeRequestArgs> BeforeRequest;
-        public static event EventHandler<AfterResponseArgs> AfterResponse;
+        public event EventHandler<BeforeRequestArgs> BeforeRequest;
+        public event EventHandler<AfterResponseArgs> AfterResponse;
 
-        public event EventHandler<BatchRequestProgressArgs> BatchRequestProgress;
+        public event EventHandler<RequestProgressArgs> RequestProgress;
 
 
         public DbClient(string hostName, int port)
@@ -89,7 +89,24 @@ namespace HDBPublic
             result = "OK";
             try
             {
-                m_requestClient.Hi();
+                SendRequest(RequestType.Hi, null);
+            }
+            catch (Exception ex)
+            {
+                success = false;
+                result = ex.Message;
+            }
+
+            return success;
+        }
+
+        public bool Stop(out string result)
+        {
+            bool success = true;
+            result = "OK";
+            try
+            {
+                SendRequest(RequestType.Stop, null);
             }
             catch (Exception ex)
             {
@@ -112,7 +129,7 @@ namespace HDBPublic
             return RequestData(OpType.RemoveTable, tableName);
         }
 
-        public void CreateTable(string tableName, DataTable dt)
+        public void CreateTable(string tableName, List<ColumnDefinition> columnDefinitions)
         {
             XmlDocument doc = new XmlDocument();
             doc.LoadXml("<Msg></Msg>");
@@ -126,19 +143,19 @@ namespace HDBPublic
             <Column Name=""Name"" DataType=""varchar"" PK=""""></Column>
             </Msg>
             */
-            foreach (DataRow dr in dt.Rows)
+            foreach (var columnDefinition in columnDefinitions)
             {
                 XmlNode colNode = XmlHelper.AddSubNode(msgNode, "Column", "");
-                XmlHelper.SetAttribute(colNode, "Name", dr["Name"].ToString());
-                XmlHelper.SetAttribute(colNode, "DataType", dr["DataType"].ToString());
+                XmlHelper.SetAttribute(colNode, "Name", columnDefinition.Name);
+                XmlHelper.SetAttribute(colNode, "DataType", columnDefinition.DataType.ToString());
 
-                if (!dr.IsNull("PK"))
+                if (columnDefinition.PK)
                 {
-                    XmlHelper.SetAttribute(colNode, "PK", Convert.ToBoolean(dr["PK"]) ? "1" : "0");
+                    XmlHelper.SetAttribute(colNode, "PK", columnDefinition.PK ? "1" : "0");
                 }
             }
 
-            string responseXml = SendMsg(doc);
+            string responseXml = SendRequest(RequestType.Request, doc.OuterXml);
             XmlDocument docResponse = new XmlDocument();
             docResponse.LoadXml(responseXml);
             XmlNode statusNode = docResponse.SelectSingleNode("/Result/@Status");
@@ -164,7 +181,7 @@ namespace HDBPublic
                 XmlHelper.AddAttribute(msgNode, "Table", tableName);
             }
 
-            string responseXml = SendMsg(doc);
+            string responseXml = SendRequest(RequestType.Request, doc.OuterXml);
             XmlDocument docResponse = new XmlDocument();
             docResponse.LoadXml(responseXml);
             XmlNode statusNode = docResponse.SelectSingleNode("/Result/@Status");
@@ -213,7 +230,7 @@ namespace HDBPublic
 
                 if (currentCount % MaxBatchCount == 0 || currentCount == totalCount)
                 {
-                    string responseXml = SendMsg(doc);
+                    string responseXml = SendRequest(RequestType.Request, doc.OuterXml);
                     XmlDocument docResponse = new XmlDocument();
                     docResponse.LoadXml(responseXml);
                     XmlNode statusNode = docResponse.SelectSingleNode("/Result/@Status");
@@ -229,10 +246,7 @@ namespace HDBPublic
 
                     if (currentCount % ProgressCount == 0)
                     {
-                        if (BatchRequestProgress != null)
-                        {
-                            BatchRequestProgress(null, new BatchRequestProgressArgs(totalCount, currentCount));
-                        }
+                        RequestProgress?.Invoke(null, new RequestProgressArgs(totalCount, currentCount));
                     }
 
                     doc = new XmlDocument();
@@ -250,109 +264,17 @@ namespace HDBPublic
             return result;
         }
 
-        private string SendMsg(XmlDocument msg)
+        private string SendRequest(RequestType requestType, string requestText)
         {
-            if (msg.OuterXml.Length <= 0)
+            if (requestType == RequestType.Request && string.IsNullOrEmpty(requestText))
             {
                 throw new ArgumentException("Message cannot be empty.");
             }
 
-            byte[] arrBody = Encoding.UTF8.GetBytes(msg.OuterXml);
-            string header = string.Format("HDB:{0}\nLength:{1}\n\n", Version, arrBody.Length);
-            byte[] arrHeader = Encoding.UTF8.GetBytes(header);
-
-            if (BeforeRequest != null)
-            {
-                BeforeRequest(null, new BeforeRequestArgs(header + msg.OuterXml));
-            }
-
-            string responseText = null;
-            using (System.Net.Sockets.TcpClient client = new System.Net.Sockets.TcpClient(m_hostName, m_port))
-            {
-                using (NetworkStream stream = client.GetStream())
-                {
-                    stream.Write(arrHeader, 0, arrHeader.Length);
-                    stream.Write(arrBody, 0, arrBody.Length);
-                    stream.Flush();
-
-                    // Cache all bytes to prevent splitted UTF8 bytes
-                    using (MemoryStream ms = new MemoryStream())
-                    {
-                        StringBuilder result = new StringBuilder();
-                        const int MaxBuffSize = 1024;
-                        byte[] buff = new byte[MaxBuffSize];
-                        int bodyLength = -1;
-                        int currentBodyPos = -1;
-                        Regex regex = new Regex("Length:(?<len>\\d+)\\n", RegexOptions.Singleline);
-
-                        Stopwatch stepTime = new Stopwatch();
-                        stepTime.Start();
-                        while (true)
-                        {
-                            if (stepTime.Elapsed.TotalSeconds > 30)
-                            {
-                                throw new TimeoutException("Receive timeout.");
-                            }
-                            int byteCount = stream.Read(buff, 0, MaxBuffSize);
-                            if (byteCount > 0)
-                            {
-                                result.Append(Encoding.UTF8.GetString(buff, 0, byteCount));
-                                ms.Write(buff, 0, byteCount);
-                            }
-
-                            string currentResult = result.ToString();
-                            int headerEndPos = currentResult.IndexOf("\n\n");
-                            if (headerEndPos > 0)
-                            {
-                                Match match = regex.Match(currentResult);
-                                if (match.Success)
-                                {
-                                    bodyLength = int.Parse(match.Groups["len"].Value);
-                                }
-
-                                if (bodyLength < 0)
-                                {
-                                    throw new ApplicationException("Invalid response.");
-                                }
-
-                                // Position base on byte level
-                                // So the every character for header must be 0~127
-                                // -2: exclude 2 enter characters: \n\n
-                                currentBodyPos = (int)ms.Length - headerEndPos - 2;
-                                break;
-                            }
-
-                            if (ms.Length > 512) // 512: current allowed max header length
-                            {
-                                throw new ApplicationException("Invalid response.");
-                            }
-                        }
-
-                        while (currentBodyPos < bodyLength)
-                        {
-                            int byteCount = stream.Read(buff, 0, MaxBuffSize);
-                            if (byteCount > 0)
-                            {
-                                currentBodyPos += byteCount;
-                                ms.Write(buff, 0, byteCount);
-                            }
-                        }
-
-                        ms.Position = 0;
-                        StreamReader reader = new StreamReader(ms, Encoding.UTF8);
-                        responseText = reader.ReadToEnd();
-                    }
-
-                }
-            }
-
-            if (AfterResponse != null)
-            {
-                AfterResponse(null, new AfterResponseArgs(header + msg.OuterXml, responseText));
-            }
-
-            int tempPos = responseText.IndexOf("\n\n");
-            return responseText.Substring(tempPos + 2);
+            BeforeRequest?.Invoke(null, new BeforeRequestArgs(requestText));
+            string responseText = m_requestClient.Call(requestType, requestText);
+            AfterResponse?.Invoke(null, new AfterResponseArgs(requestText, responseText));
+            return responseText;
         }
 
         private static string ConvertValueToString(object obj)
@@ -412,12 +334,12 @@ namespace HDBPublic
         }
     }
 
-    public class BatchRequestProgressArgs : EventArgs
+    public class RequestProgressArgs : EventArgs
     {
         public readonly int TotalCount;
         public readonly int CompleteCount;
 
-        public BatchRequestProgressArgs(int totalCount, int completeCount)
+        public RequestProgressArgs(int totalCount, int completeCount)
         {
             this.TotalCount = totalCount;
             this.CompleteCount = completeCount;

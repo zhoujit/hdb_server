@@ -2,67 +2,68 @@
 {
     using System.Net;
     using System.IO;
-    using System.Xml;
     using System.Text;
     using System;
+    using System.Collections.Generic;
+
+    public enum RequestType
+    {
+        Request = 0,
+        Hi = 1,
+        Stop = 2,
+    }
+
+    enum RequestMethod
+    {
+        GET = 1,
+        Post = 2,
+    }
 
     public class RequestClient
     {
         private string m_hostName;
         private int m_port;
 
+        private Dictionary<RequestType, (RequestMethod method, string req)> m_requestMap;
+
         public RequestClient(string hostName, int port)
         {
             m_hostName = hostName;
             m_port = port;
-        }
 
-        public bool Hi()
-        {
-            // <Result Status="1" StatusText="HDB Server"></Result>
-            string url = string.Format($"http://{m_hostName}:{m_port}/hi");
-            string responseText = Get(url);
-            XmlDocument doc = new XmlDocument();
-            doc.LoadXml(responseText);
-            return doc.SelectSingleNode("/Result[@Status='1']") != null;
-        }
-
-        public string Get(string url)
-        {
-            HttpWebRequest request = (HttpWebRequest)HttpWebRequest.Create(url);
+            m_requestMap = new Dictionary<RequestType, (RequestMethod method, string req)>
             {
-                request.Method = "GET";
-                using (WebResponse response = request.GetResponse())
+                [RequestType.Hi] = (RequestMethod.GET, "hi"),
+                [RequestType.Stop] = (RequestMethod.GET, "stop"),
+                [RequestType.Request] = (RequestMethod.Post, "req")
+            };
+        }
+
+        public string Call(RequestType requestType, string body)
+        {
+            var requestInfo = m_requestMap[requestType];
+            string url = string.Format($"http://{m_hostName}:{m_port}/{requestInfo.req}");
+            HttpWebRequest webReq = (HttpWebRequest)WebRequest.Create(new Uri(url));
+            webReq.Method = requestInfo.method.ToString();
+
+            if (body != null && requestInfo.method == RequestMethod.Post)
+            {
+                byte[] byteArray = Encoding.Default.GetBytes(body);
+                webReq.ContentLength = byteArray.Length;
+                using (Stream reqStream = webReq.GetRequestStream())
                 {
-                    using (StreamReader reader = new StreamReader(response.GetResponseStream(), Encoding.UTF8))
-                    {
-                        return reader.ReadToEnd();
-                    }
+                    reqStream.Write(byteArray, 0, byteArray.Length);
                 }
             }
-        }
 
-        public string Post(string url, string body)
-        {
-            byte[] byteArray = Encoding.Default.GetBytes(body);
-            HttpWebRequest webReq = (HttpWebRequest)WebRequest.Create(new Uri(url));
-            webReq.Method = "POST";
-            webReq.ContentType = "application/x-www-form-urlencoded";
-            webReq.ContentLength = byteArray.Length;
-            using (Stream reqStream = webReq.GetRequestStream())
-            {
-                reqStream.Write(byteArray, 0, byteArray.Length);
-            }
             using (HttpWebResponse response = (HttpWebResponse)webReq.GetResponse())
             {
-                using (StreamReader reader = new StreamReader(response.GetResponseStream(), Encoding.Default))
+                using (StreamReader reader = new StreamReader(response.GetResponseStream(), Encoding.UTF8))
                 {
                     return reader.ReadToEnd();
                 }
             }
         }
-
-
 
     }
 }

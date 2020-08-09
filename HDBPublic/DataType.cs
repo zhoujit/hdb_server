@@ -1,6 +1,6 @@
 namespace HDBPublic
 {
-    public enum ColumnType
+    public enum DataType
     {
         Char,
         Varchar,
