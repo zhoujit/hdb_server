@@ -9,6 +9,23 @@ namespace HDBCLI
     {
         static void Main(string[] args)
         {
+            TestDbClient();
+
+            TestSQL();
+        }
+
+        private static void TestSQL()
+        {
+            SQLStatement statement = new SQLStatement("192.168.56.1", 9898);
+            (bool success, string message, DataTable result) = statement.Execute("insert into Issuers(Id, Name, Price) values('S2020', 'ARM 2020', 2020.12345)");
+            (success, message, result) = statement.Execute("delete from Issuers where Id='S001'");
+            (success, message, result) = statement.Execute("select * from Issuers where Id = 'S001'");
+            (success, message, result) = statement.Execute("select * from Issuers where Id = 'S2020'");
+
+        }
+
+        static void TestDbClient()
+        {
             string message;
             DbClient dbClient = new DbClient("192.168.56.1", 9898);
             dbClient.BeforeRequest += (sender, args) =>
@@ -46,11 +63,11 @@ namespace HDBCLI
             */
             Dictionary<string, object> sec001 = new Dictionary<string, object>()
             {
-                {"SecId", "SEC001"}
+                {"Id", "S001"}
             };
             Dictionary<string, object> sdk001 = new Dictionary<string, object>()
             {
-                {"SecId", "SDK001"}
+                {"Id", "S002"}
             };
             List<Dictionary<string, object>> fieldValues = new List<Dictionary<string, object>>()
             {
