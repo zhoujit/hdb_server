@@ -229,6 +229,7 @@ select * from t1 where f1 = 100;
                         isName = true;
                         lastFieldName = null;
 
+                        i++;
                         while (i < whereStatment.Length)
                         {
                             if (splitterChars.Contains(whereStatment[i]))
@@ -238,12 +239,23 @@ select * from t1 where f1 = 100;
                             }
                             break;
                         }
-                        if (i == whereStatment.Length)
+                        if (i >= whereStatment.Length)
                         {
                             break;
                         }
 
-                        if (i < whereStatment.Length - 3 && string.Compare("AND", whereStatment.Substring(i, 3), true) != 0)
+                        if (i < whereStatment.Length - 2 && string.Compare("OR", whereStatment.Substring(i, 2), true) == 0)
+                        {
+                            if (filterLine.Count > 0)
+                            {
+                                result.Add(filterLine);
+                                filterLine.Clear();
+                            }
+
+                            i += 2;
+                            continue;
+                        }
+                        else if (i < whereStatment.Length - 3 && string.Compare("AND", whereStatment.Substring(i, 3), true) != 0)
                         {
                             throw new Exception("Invalid where clause.");
                         }
@@ -260,7 +272,10 @@ select * from t1 where f1 = 100;
                 throw new Exception("Incompleted where clause.");
             }
 
-            result.Add(filterLine);
+            if (filterLine.Count > 0)
+            {
+                result.Add(filterLine);
+            }
             return result;
         }
 
@@ -268,77 +283,82 @@ select * from t1 where f1 = 100;
         {
             bool result = true;
             errorMessage = "";
-            Dictionary<string, object> fieldNameValues = new Dictionary<string, object>();
 
             string[] fieldNames = fieldNameList.Split(new char[] { ',' });
-            string[] fieldValues = ParseFieldValueList(fieldValueList).ToArray();
-
-            if (result && fieldNames.Length != fieldValues.Length)
+            for (int i = 0; i < fieldNames.Length; i++)
             {
-                errorMessage = string.Format("Mismatched between field name and value list.\n{0}\n{1}", fieldNameList, fieldValueList);
-                result = false;
+                if (fieldNames[i].Trim().Length == 0)
+                {
+                    errorMessage = "Field name cannot be empty.\n" + fieldNameList;
+                    result = false;
+                    break;
+                }
             }
 
             if (result)
             {
-                for (int i = 0; i < fieldNames.Length; i++)
+                int? nextIndex = 0;
+                while (nextIndex != null && nextIndex < fieldValueList.Length)
                 {
-                    if (fieldNames[i].Trim().Length == 0)
+                    int startIndex = nextIndex.Value;
+                    List<string> fieldValues = ParseFieldValueList(fieldValueList, startIndex, out nextIndex);
+
+                    if (result && fieldNames.Length != fieldValues.Count)
                     {
-                        errorMessage = "Field name cannot be empty.\n" + fieldNameList;
+                        errorMessage = string.Format("Mismatched between field name and value list.\n{0}\n{1}", fieldNameList, fieldValueList);
                         result = false;
-                        break;
+                    }
+
+                    if (result)
+                    {
+                        Dictionary<string, object> fieldNameValues = new Dictionary<string, object>();
+                        for (int i = 0; i < fieldNames.Length; i++)
+                        {
+                            fieldNameValues.Add(fieldNames[i].Trim(), fieldValues[i]);
+                        }
+                        if (fieldNameValues.Count > 0)
+                        {
+                            valueSet.Add(fieldNameValues);
+                        }
                     }
                 }
             }
 
-            if (result)
-            {
-                for (int i = 0; i < fieldNames.Length; i++)
-                {
-                    fieldNameValues.Add(fieldNames[i].Trim(), fieldValues[i]);
-                }
-            }
-
-            if (fieldNameValues.Count > 0)
-            {
-                valueSet.Add(fieldNameValues);
-            }
             return result;
         }
 
-        public static List<string> ParseFieldValueList(string line)
+        public static List<string> ParseFieldValueList(string line, int currentIndex, out int? nextIndex)
         {
+            nextIndex = null;
             List<string> columnValues = new List<string>();
-
             bool escaped = false;
             int startIndex = 0;
             int? endIndex = null;
             bool canSkipSpace = true;  // only for prefix space
-            for (int i = 0; i < line.Length; i++)
+            for (;currentIndex < line.Length; currentIndex++)
             {
-                char c = line[i];
+                char c = line[currentIndex];
                 if (c == SingleQuotation)
                 {
                     if (escaped)
                     {
-                        if (i == line.Length - 1)
+                        if (currentIndex == line.Length - 1)
                         {
                             // last quotation mark
-                            endIndex = i;
+                            endIndex = currentIndex;
                         }
-                        else if (line[i + 1] == SingleQuotation)
+                        else if (line[currentIndex + 1] == SingleQuotation)
                         {
                             // '' -> '
-                            i++;
+                            currentIndex++;
                             continue;
                         }
                         else
                         {
-                            endIndex = i;
-                            for (int j = i + 1; j < line.Length; j++)
+                            endIndex = currentIndex;
+                            for (int j = currentIndex + 1; j < line.Length; j++)
                             {
-                                i++;
+                                currentIndex++;
                                 if (line[j] == Comma)
                                 {
                                     break;
@@ -354,23 +374,23 @@ select * from t1 where f1 = 100;
                     {
                         if (!canSkipSpace)
                         {
-                            string errorMsg = string.Format("Single quotation should be escaped. Column no:{0}, field value list: {1}", i, line);
+                            string errorMsg = string.Format("Single quotation should be escaped. Position index:{0}, field value list: {1}", currentIndex, line);
                             throw new FormatException(errorMsg);
                         }
                         escaped = true;
-                        startIndex = i + 1;
+                        startIndex = currentIndex + 1;
                     }
                 }
-                else if (c == Comma)
+                else if (c == Comma || c == BackQuote)
                 {
                     if (!escaped)
                     {
-                        endIndex = i;
+                        endIndex = currentIndex;
                     }
                 }
-                else if (i == line.Length - 1)
+                else if (currentIndex == line.Length - 1)
                 {
-                    endIndex = i + 1;
+                    endIndex = currentIndex + 1;
                 }
 
                 if (canSkipSpace && c != Space)
@@ -391,11 +411,30 @@ select * from t1 where f1 = 100;
                         columnValues.Add(word.Replace("\'\'", "\'"));
                     }
 
-                    startIndex = i + 1;
+                    startIndex = currentIndex + 1;
                     endIndex = null;
 
                     escaped = false;
                     canSkipSpace = true;
+
+                    if (c == BackQuote)
+                    {
+                        char[] skippedChars = new char[] { ' ', ')', ',', '(' };
+                        while (currentIndex < line.Length)
+                        {
+                            char ch = line[currentIndex];
+                            if (ch == ' ' || ch == ')' || ch == '(' || ch == ',')
+                            {
+                                currentIndex++;
+                            }
+                            else
+                            {
+                                break;
+                            }
+                        }
+                        nextIndex = currentIndex;
+                        break;
+                    }
                 }
             }
 
@@ -412,6 +451,7 @@ select * from t1 where f1 = 100;
 
         private static readonly char SingleQuotation = '\'';
         private static readonly char Comma = ',';
+        private static readonly char BackQuote = ')';
         private static readonly char Space = ' ';
 
         private readonly static string TableNamePattern = @"(?<TableName>[0-9A-Za-z]+)";

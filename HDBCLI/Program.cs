@@ -22,12 +22,10 @@ namespace HDBCLI
             bool success;
             string message;
             DataTable result;
+            (success, message, result) = statement.Execute("insert into Issuers(Id, Name, Price) values('S2020', 'ARM 2020', 2020.12345),('S2021', 'ARM 2021', 2021.12345)");
             (success, message, result) = statement.Execute("select * from Issuers where Id = 'S2020' or Id = 'S001'");
-
-            (success, message, result) = statement.Execute("insert into Issuers(Id, Name, Price) values('S2020', 'ARM 2020', 2020.12345)");
             (success, message, result) = statement.Execute("delete from Issuers where Id='S001'");
             (success, message, result) = statement.Execute("select * from Issuers where Id = 'S001'");
-            (success, message, result) = statement.Execute("select * from Issuers where Id = 'S2020'");
 
         }
 
