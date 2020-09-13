@@ -29,7 +29,7 @@
             "program": "${workspaceFolder}/HDBCLI/bin/Debug/netcoreapp3.1/HDBCLI.dll",
             "args": [],
             "cwd": "${workspaceFolder}",
-            "console": "internalConsole",
+            "console": "externalTerminal",
             "stopAtEntry": false
         },
         {

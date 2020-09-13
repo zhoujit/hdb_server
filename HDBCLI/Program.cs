@@ -9,15 +9,42 @@ namespace HDBCLI
     {
         static void Main(string[] args)
         {
-            TestSQL();
+            string hostName = "192.168.56.1";
+            int port = 9898;
 
-            TestDbClient();
+            System.AppDomain.CurrentDomain.UnhandledException += (object sender, UnhandledExceptionEventArgs args) =>
+            {
+                ConsoleColor foregroundColor = Console.ForegroundColor;
+                try
+                {
+                    Console.ForegroundColor = ConsoleColor.DarkRed;
+                    Exception ex = args?.ExceptionObject as Exception;
+                    if (ex != null)
+                    {
+                        Console.WriteLine($"Exception message:{ex.Message}, IsTerminating:{args.IsTerminating}");
+                    }
+                    else
+                    {
+                        Console.WriteLine($"Exception args:{args?.ExceptionObject}");
+                    }
+                }
+                finally
+                {
+                    Console.ForegroundColor = foregroundColor;
+                }
+            };
+
+            new HDBConsole(hostName, port).Run();
+
+            TestSQL(hostName, port);
+
+            TestDbClient(hostName, port);
 
         }
 
-        private static void TestSQL()
+        private static void TestSQL(string hostName, int port)
         {
-            SQLStatement statement = new SQLStatement("192.168.56.1", 9898);
+            SQLStatement statement = new SQLStatement(hostName, port);
 
             bool success;
             string message;
@@ -29,10 +56,10 @@ namespace HDBCLI
 
         }
 
-        static void TestDbClient()
+        static void TestDbClient(string hostName, int port)
         {
             string message;
-            DbClient dbClient = new DbClient("192.168.56.1", 9898);
+            DbClient dbClient = new DbClient(hostName, port);
             dbClient.BeforeRequest += (sender, args) =>
             {
                 Console.WriteLine("Before request. Body: " + args.RequestText);

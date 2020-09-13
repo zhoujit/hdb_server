@@ -249,7 +249,7 @@ select * from t1 where f1 = 100;
                             if (filterLine.Count > 0)
                             {
                                 result.Add(filterLine);
-                                filterLine.Clear();
+                                filterLine = new Dictionary<string, object>();
                             }
 
                             i += 2;
@@ -327,7 +327,7 @@ select * from t1 where f1 = 100;
             return result;
         }
 
-        public static List<string> ParseFieldValueList(string line, int currentIndex, out int? nextIndex)
+        private static List<string> ParseFieldValueList(string line, int currentIndex, out int? nextIndex)
         {
             nextIndex = null;
             List<string> columnValues = new List<string>();
