@@ -27,9 +27,9 @@ namespace HDBPublic
                 if (success)
                 {
                     string tableName = match.Groups["TableName"].Value.Trim();
-                    string whereStatment = match.Groups["Where"].Value.Trim();
+                    string whereStatement = match.Groups["Where"].Value.Trim();
 
-                    List<Dictionary<string, object>> fieldConditions = ParseWhereStatement(whereStatment);
+                    List<Dictionary<string, object>> fieldConditions = ParseWhereStatement(whereStatement);
 
                     stepTime.Start();
                     result = m_dbClient.Query(tableName, fieldConditions);
@@ -82,9 +82,9 @@ select * from t1 where f1 = 100;
                 if (success)
                 {
                     string tableName = match.Groups["TableName"].Value.Trim();
-                    string whereStatment = match.Groups["Where"].Value.Trim();
+                    string whereStatement = match.Groups["Where"].Value.Trim();
 
-                    List<Dictionary<string, object>> fieldConditions = ParseWhereStatement(whereStatment);
+                    List<Dictionary<string, object>> fieldConditions = ParseWhereStatement(whereStatement);
 
                     stepTime.Start();
                     m_dbClient.Delete(tableName, fieldConditions);
@@ -107,19 +107,19 @@ select * from t1 where f1 = 100;
             return (success, message, result);
         }
 
-        private List<Dictionary<string, object>> ParseWhereStatement(string whereStatment)
+        private List<Dictionary<string, object>> ParseWhereStatement(string whereStatement)
         {
             List<Dictionary<string, object>> result = new List<Dictionary<string, object>>();
-            whereStatment = whereStatment + " ";
+            whereStatement = whereStatement + " ";
             List<char> splitterChars = new List<char>() { ' ', '\t', '\r', '\n' };
             Dictionary<string, object> filterLine = new Dictionary<string, object>();
             bool isName = true;
             int? startIndex = null;
             int? endIndex = null;
             string lastFieldName = null;
-            for (int i = 0; i < whereStatment.Length; i++)
+            for (int i = 0; i < whereStatement.Length; i++)
             {
-                char c = whereStatment[i];
+                char c = whereStatement[i];
                 if (isName)
                 {
                     // Field name.
@@ -142,15 +142,15 @@ select * from t1 where f1 = 100;
                     {
                         endIndex = i;
 
-                        lastFieldName = whereStatment.Substring(startIndex.Value, endIndex.Value - startIndex.Value).Trim();
+                        lastFieldName = whereStatement.Substring(startIndex.Value, endIndex.Value - startIndex.Value).Trim();
 
                         startIndex = null;
                         endIndex = null;
                         isName = false;
 
-                        while (i < whereStatment.Length)
+                        while (i < whereStatement.Length)
                         {
-                            if (whereStatment[i] == '=')
+                            if (whereStatement[i] == '=')
                             {
                                 break;
                             }
@@ -170,16 +170,16 @@ select * from t1 where f1 = 100;
                         continue;
                     }
 
-                    if ((splitterChars.Contains(c) && whereStatment[startIndex.Value] != SingleQuotation) || c == SingleQuotation)
+                    if ((splitterChars.Contains(c) && whereStatement[startIndex.Value] != SingleQuotation) || c == SingleQuotation)
                     {
                         if (c == SingleQuotation)
                         {
-                            if (whereStatment[startIndex.Value] != SingleQuotation)
+                            if (whereStatement[startIndex.Value] != SingleQuotation)
                             {
                                 throw new Exception("String must in single quotation.");
                             }
 
-                            if (i < whereStatment.Length - 1 && whereStatment[i + 1] == SingleQuotation)
+                            if (i < whereStatement.Length - 1 && whereStatement[i + 1] == SingleQuotation)
                             {
                                 // The first single-quotation in doule single-quotation.
                                 continue;
@@ -189,7 +189,7 @@ select * from t1 where f1 = 100;
                             int tempIdx = i;
                             while (tempIdx > startIndex)
                             {
-                                if (whereStatment[tempIdx] == SingleQuotation)
+                                if (whereStatement[tempIdx] == SingleQuotation)
                                 {
                                     quotationCount++;
                                 }
@@ -210,7 +210,7 @@ select * from t1 where f1 = 100;
 
                         endIndex = i;
 
-                        string fieldValue = whereStatment.Substring(startIndex.Value, endIndex.Value - startIndex.Value).Trim();
+                        string fieldValue = whereStatement.Substring(startIndex.Value, endIndex.Value - startIndex.Value).Trim();
                         if (!fieldValue.StartsWith("'")
                             && (fieldValue.Contains("\r") || fieldValue.Contains("\n"))
                             )
@@ -230,21 +230,21 @@ select * from t1 where f1 = 100;
                         lastFieldName = null;
 
                         i++;
-                        while (i < whereStatment.Length)
+                        while (i < whereStatement.Length)
                         {
-                            if (splitterChars.Contains(whereStatment[i]))
+                            if (splitterChars.Contains(whereStatement[i]))
                             {
                                 i++;
                                 continue;
                             }
                             break;
                         }
-                        if (i >= whereStatment.Length)
+                        if (i >= whereStatement.Length)
                         {
                             break;
                         }
 
-                        if (i < whereStatment.Length - 2 && string.Compare("OR", whereStatment.Substring(i, 2), true) == 0)
+                        if (i < whereStatement.Length - 2 && string.Compare("OR", whereStatement.Substring(i, 2), true) == 0)
                         {
                             if (filterLine.Count > 0)
                             {
@@ -255,7 +255,7 @@ select * from t1 where f1 = 100;
                             i += 2;
                             continue;
                         }
-                        else if (i < whereStatment.Length - 3 && string.Compare("AND", whereStatment.Substring(i, 3), true) != 0)
+                        else if (i < whereStatement.Length - 3 && string.Compare("AND", whereStatement.Substring(i, 3), true) != 0)
                         {
                             throw new Exception("Invalid where clause.");
                         }
@@ -335,7 +335,7 @@ select * from t1 where f1 = 100;
             int startIndex = 0;
             int? endIndex = null;
             bool canSkipSpace = true;  // only for prefix space
-            for (;currentIndex < line.Length; currentIndex++)
+            for (; currentIndex < line.Length; currentIndex++)
             {
                 char c = line[currentIndex];
                 if (c == SingleQuotation)
@@ -419,11 +419,11 @@ select * from t1 where f1 = 100;
 
                     if (c == BackQuote)
                     {
-                        char[] skippedChars = new char[] { ' ', ')', ',', '(' };
+                        HashSet<char> skippedChars = new HashSet<char>() { ' ', ')', ',', '(', '\r', '\n' };
                         while (currentIndex < line.Length)
                         {
                             char ch = line[currentIndex];
-                            if (ch == ' ' || ch == ')' || ch == '(' || ch == ',')
+                            if (skippedChars.Contains(ch))
                             {
                                 currentIndex++;
                             }

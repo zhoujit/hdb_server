@@ -27,7 +27,7 @@
             "WARNING17": "*********************************************************************************",
             "preLaunchTask": "build",
             "program": "${workspaceFolder}/HDBCLI/bin/Debug/netcoreapp3.1/HDBCLI.dll",
-            "args": [],
+            "args": ["--hostname", "192.168.56.1", "--port", "9898"],
             "cwd": "${workspaceFolder}",
             "console": "externalTerminal",
             "stopAtEntry": false

@@ -20,7 +20,14 @@ namespace HDBCLI
                 OutputText(SystemOutputColor, ">", false);
 
                 Console.ResetColor();
-                string line = Console.ReadLine().TrimEnd();
+                string line = Console.ReadLine();
+                if (line == null)
+                {
+                    inputBuffer.Clear();
+                    OutputText(SystemOutputColor, "\nClear input buffer.");
+                    continue;
+                }
+                line = line.TrimEnd();
                 inputBuffer.AppendFormat($"\n{line}");
                 if (line.EndsWith(";"))
                 {
@@ -34,6 +41,7 @@ namespace HDBCLI
                             {
                                 Environment.Exit(0);
                             }
+
                             ExecuteSQL(sql);
                         }
                     }
@@ -134,7 +142,7 @@ namespace HDBCLI
 
         private static readonly ConsoleColor SystemOutputColor = ConsoleColor.DarkCyan;
         private static readonly ConsoleColor ErrorOutputColor = ConsoleColor.DarkRed;
-        private static readonly ConsoleColor SuccessOutputColor = ConsoleColor.Green;
+        private static readonly ConsoleColor SuccessOutputColor = ConsoleColor.DarkMagenta;
         private static readonly ConsoleColor ResultOutputColor = ConsoleColor.DarkBlue;
 
         private SQLStatement m_statement = null;

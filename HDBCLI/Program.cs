@@ -9,36 +9,27 @@ namespace HDBCLI
     {
         static void Main(string[] args)
         {
-            string hostName = "192.168.56.1";
-            int port = 9898;
-
             System.AppDomain.CurrentDomain.UnhandledException += (object sender, UnhandledExceptionEventArgs args) =>
             {
-                ConsoleColor foregroundColor = Console.ForegroundColor;
-                try
+                Exception ex = args?.ExceptionObject as Exception;
+                if (ex != null)
                 {
-                    Console.ForegroundColor = ConsoleColor.DarkRed;
-                    Exception ex = args?.ExceptionObject as Exception;
-                    if (ex != null)
-                    {
-                        Console.WriteLine($"Exception message:{ex.Message}, IsTerminating:{args.IsTerminating}");
-                    }
-                    else
-                    {
-                        Console.WriteLine($"Exception args:{args?.ExceptionObject}");
-                    }
+                    Console.WriteLine($"Exception message:{ex.Message}\r\nStackTrace:{ex.StackTrace}\r\nIsTerminating:{args.IsTerminating}.");
                 }
-                finally
+                else
                 {
-                    Console.ForegroundColor = foregroundColor;
+                    Console.WriteLine($"Exception args:{args?.ExceptionObject}.");
                 }
             };
 
+            ArgumentParser argumentParser = new ArgumentParser(args);
+            string hostName = argumentParser["hostName", true];
+            int port = int.Parse(argumentParser["port", true]);
+
             new HDBConsole(hostName, port).Run();
 
-            TestSQL(hostName, port);
-
-            TestDbClient(hostName, port);
+            // TestSQL(hostName, port);
+            // TestDbClient(hostName, port);
 
         }
 
