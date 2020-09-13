@@ -43,22 +43,22 @@
         {
             var requestInfo = m_requestMap[requestType];
             string url = string.Format($"http://{m_hostName}:{m_port}/{requestInfo.req}");
-            HttpWebRequest webReq = (HttpWebRequest)WebRequest.Create(new Uri(url));
-            webReq.Method = requestInfo.method.ToString();
+            HttpWebRequest webRequest = (HttpWebRequest)WebRequest.Create(new Uri(url));
+            webRequest.Method = requestInfo.method.ToString();
 
             if (body != null && requestInfo.method == RequestMethod.Post)
             {
-                byte[] byteArray = Encoding.Default.GetBytes(body);
-                webReq.ContentLength = byteArray.Length;
-                using (Stream reqStream = webReq.GetRequestStream())
+                byte[] bytes = Encoding.Default.GetBytes(body);
+                webRequest.ContentLength = bytes.Length;
+                using (Stream reqStream = webRequest.GetRequestStream())
                 {
-                    reqStream.Write(byteArray, 0, byteArray.Length);
+                    reqStream.Write(bytes, 0, bytes.Length);
                 }
             }
 
-            using (HttpWebResponse response = (HttpWebResponse)webReq.GetResponse())
+            using (HttpWebResponse webResponsee = (HttpWebResponse)webRequest.GetResponse())
             {
-                using (StreamReader reader = new StreamReader(response.GetResponseStream(), Encoding.UTF8))
+                using (StreamReader reader = new StreamReader(webResponsee.GetResponseStream(), Encoding.UTF8))
                 {
                     return reader.ReadToEnd();
                 }

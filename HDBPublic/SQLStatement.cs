@@ -29,10 +29,10 @@ namespace HDBPublic
                     string tableName = match.Groups["TableName"].Value.Trim();
                     string whereStatment = match.Groups["Where"].Value.Trim();
 
-                    List<Dictionary<string, object>> dctField = ParseWhereStatement(whereStatment);
+                    List<Dictionary<string, object>> fieldConditions = ParseWhereStatement(whereStatment);
 
                     stepTime.Start();
-                    result = m_dbClient.Query(tableName, dctField);
+                    result = m_dbClient.Query(tableName, fieldConditions);
                     stepTime.Stop();
 
                     message = string.Format("Returned {0} record(s). Elapsed:{1}s\n", result.Rows.Count, stepTime.Elapsed.TotalSeconds.ToString("0.###"));
@@ -59,12 +59,12 @@ select * from t1 where f1 = 100;
                     string fieldNameList = match.Groups["FieldNameList"].Value;
                     string fieldValueList = match.Groups["FieldValueList"].Value;
 
-                    List<Dictionary<string, object>> dctValue = new List<Dictionary<string, object>>();
-                    success = FillFieldValue(fieldNameList, fieldValueList, dctValue, out message);
+                    List<Dictionary<string, object>> fieldConditions = new List<Dictionary<string, object>>();
+                    success = FillFieldValue(fieldNameList, fieldValueList, fieldConditions, out message);
                     if (success)
                     {
                         stepTime.Start();
-                        m_dbClient.Add(tableName, dctValue);
+                        m_dbClient.Add(tableName, fieldConditions);
                         stepTime.Stop();
 
                         message = string.Format("Succeed to append record(s). Elapsed:{0}s", stepTime.Elapsed.TotalSeconds.ToString("0.###"));
@@ -84,10 +84,10 @@ select * from t1 where f1 = 100;
                     string tableName = match.Groups["TableName"].Value.Trim();
                     string whereStatment = match.Groups["Where"].Value.Trim();
 
-                    List<Dictionary<string, object>> dctField = ParseWhereStatement(whereStatment);
+                    List<Dictionary<string, object>> fieldConditions = ParseWhereStatement(whereStatment);
 
                     stepTime.Start();
-                    m_dbClient.Delete(tableName, dctField);
+                    m_dbClient.Delete(tableName, fieldConditions);
                     stepTime.Stop();
 
                     message = string.Format("Succeed to remove records. Elapsed:{0}s", stepTime.Elapsed.TotalSeconds.ToString("0.###"));
@@ -111,8 +111,8 @@ select * from t1 where f1 = 100;
         {
             List<Dictionary<string, object>> result = new List<Dictionary<string, object>>();
             whereStatment = whereStatment + " ";
-            List<char> lstSplitterChar = new List<char>() { ' ', '\t', '\r', '\n' };
-            Dictionary<string, object> dctField = new Dictionary<string, object>();
+            List<char> splitterChars = new List<char>() { ' ', '\t', '\r', '\n' };
+            Dictionary<string, object> filterLine = new Dictionary<string, object>();
             bool isName = true;
             int? startIndex = null;
             int? endIndex = null;
@@ -125,7 +125,7 @@ select * from t1 where f1 = 100;
                     // Field name.
                     if (startIndex == null)
                     {
-                        if (!lstSplitterChar.Contains(c))
+                        if (!splitterChars.Contains(c))
                         {
                             startIndex = i;
                             lastFieldName = null;
@@ -138,7 +138,7 @@ select * from t1 where f1 = 100;
                         continue;
                     }
 
-                    if (lstSplitterChar.Contains(c) || c == '=')
+                    if (splitterChars.Contains(c) || c == '=')
                     {
                         endIndex = i;
 
@@ -163,14 +163,14 @@ select * from t1 where f1 = 100;
                     // Field value.
                     if (startIndex == null)
                     {
-                        if (!lstSplitterChar.Contains(c))
+                        if (!splitterChars.Contains(c))
                         {
                             startIndex = i;
                         }
                         continue;
                     }
 
-                    if ((lstSplitterChar.Contains(c) && whereStatment[startIndex.Value] != SingleQuotation) || c == SingleQuotation)
+                    if ((splitterChars.Contains(c) && whereStatment[startIndex.Value] != SingleQuotation) || c == SingleQuotation)
                     {
                         if (c == SingleQuotation)
                         {
@@ -222,7 +222,7 @@ select * from t1 where f1 = 100;
                         {
                             fieldValue = fieldValue.Substring(1);
                         }
-                        dctField.Add(lastFieldName, fieldValue.Replace("\'\'", "\'"));
+                        filterLine.Add(lastFieldName, fieldValue.Replace("\'\'", "\'"));
 
                         startIndex = null;
                         endIndex = null;
@@ -231,7 +231,7 @@ select * from t1 where f1 = 100;
 
                         while (i < whereStatment.Length)
                         {
-                            if (lstSplitterChar.Contains(whereStatment[i]))
+                            if (splitterChars.Contains(whereStatment[i]))
                             {
                                 i++;
                                 continue;
@@ -260,7 +260,7 @@ select * from t1 where f1 = 100;
                 throw new Exception("Incompleted where clause.");
             }
 
-            result.Add(dctField);
+            result.Add(filterLine);
             return result;
         }
 
@@ -268,7 +268,7 @@ select * from t1 where f1 = 100;
         {
             bool result = true;
             errorMessage = "";
-            Dictionary<string, object> dctValue = new Dictionary<string, object>();
+            Dictionary<string, object> fieldNameValues = new Dictionary<string, object>();
 
             string[] fieldNames = fieldNameList.Split(new char[] { ',' });
             string[] fieldValues = ParseFieldValueList(fieldValueList).ToArray();
@@ -296,20 +296,20 @@ select * from t1 where f1 = 100;
             {
                 for (int i = 0; i < fieldNames.Length; i++)
                 {
-                    dctValue.Add(fieldNames[i].Trim(), fieldValues[i]);
+                    fieldNameValues.Add(fieldNames[i].Trim(), fieldValues[i]);
                 }
             }
 
-            if (dctValue.Count > 0)
+            if (fieldNameValues.Count > 0)
             {
-                valueSet.Add(dctValue);
+                valueSet.Add(fieldNameValues);
             }
             return result;
         }
 
         public static List<string> ParseFieldValueList(string line)
         {
-            List<string> lstColumn = new List<string>();
+            List<string> columnValues = new List<string>();
 
             bool escaped = false;
             int startIndex = 0;
@@ -384,11 +384,11 @@ select * from t1 where f1 = 100;
                     if (!escaped && string.Compare(word, "NULL", true) == 0)
                     {
                         // Handle null case, for example: insert into t1(Id,Val) values(1, NULL)
-                        lstColumn.Add(null);
+                        columnValues.Add(null);
                     }
                     else
                     {
-                        lstColumn.Add(word.Replace("\'\'", "\'"));
+                        columnValues.Add(word.Replace("\'\'", "\'"));
                     }
 
                     startIndex = i + 1;
@@ -402,10 +402,10 @@ select * from t1 where f1 = 100;
             if (line.Length == 0 || line[line.Length - 1] == Comma)
             {
                 // Add empty string into list: 1)it ends with comma  2)its length is 0
-                lstColumn.Add("");
+                columnValues.Add("");
             }
 
-            return lstColumn;
+            return columnValues;
         }
 
         private DbClient m_dbClient = null;

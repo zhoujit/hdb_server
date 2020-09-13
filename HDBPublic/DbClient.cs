@@ -31,25 +31,25 @@ namespace HDBPublic
             m_requestClient = new RequestClient(hostName, port);
         }
 
-        public void Add(string tableName, List<Dictionary<string, object>> fieldValues)
+        public void Add(string tableName, List<Dictionary<string, object>> fieldConditions)
         {
-            RequestData(OpType.Add, tableName, fieldValues);
+            RequestData(OpType.Add, tableName, fieldConditions);
         }
 
-        public void Update(string tableName, List<Dictionary<string, object>> fieldValues)
+        public void Update(string tableName, List<Dictionary<string, object>> fieldConditions)
         {
-            RequestData(OpType.Update, tableName, fieldValues);
+            RequestData(OpType.Update, tableName, fieldConditions);
         }
 
-        public void Delete(string tableName, List<Dictionary<string, object>> fieldValues)
+        public void Delete(string tableName, List<Dictionary<string, object>> fieldConditions)
         {
-            RequestData(OpType.Del, tableName, fieldValues);
+            RequestData(OpType.Del, tableName, fieldConditions);
         }
 
-        public DataTable Query(string tableName, List<Dictionary<string, object>> fieldValues)
+        public DataTable Query(string tableName, List<Dictionary<string, object>> fieldConditions)
         {
-            DataTable dtResult = new DataTable();
-            List<string> responseResult = RequestData(OpType.Get, tableName, fieldValues);
+            DataTable result = new DataTable();
+            List<string> responseResult = RequestData(OpType.Get, tableName, fieldConditions);
             foreach (string responseText in responseResult)
             {
                 XmlDocument doc = new XmlDocument();
@@ -58,15 +58,15 @@ namespace HDBPublic
 
                 foreach (XmlNode node in nodeList)
                 {
-                    if (dtResult.Columns.Count == 0)
+                    if (result.Columns.Count == 0)
                     {
                         foreach (XmlNode tempNode in node.ChildNodes)
                         {
-                            dtResult.Columns.Add(tempNode.Name);
+                            result.Columns.Add(tempNode.Name);
                         }
                     }
 
-                    DataRow drNew = dtResult.NewRow();
+                    DataRow drNew = result.NewRow();
                     foreach (XmlNode tempNode in node.ChildNodes)
                     {
                         XmlNode nilNode = tempNode.SelectSingleNode("@Nil");
@@ -76,11 +76,11 @@ namespace HDBPublic
                         }
                         drNew[tempNode.Name] = tempNode.InnerText;
                     }
-                    dtResult.Rows.Add(drNew);
+                    result.Rows.Add(drNew);
                 }
             }
 
-            return dtResult;
+            return result;
         }
 
         public bool Hi(out string result)
@@ -198,7 +198,7 @@ namespace HDBPublic
             return responseXml;
         }
 
-        public List<string> RequestData(OpType op, string tableName, List<Dictionary<string, object>> fieldValues)
+        public List<string> RequestData(OpType op, string tableName, List<Dictionary<string, object>> fieldConditions)
         {
             XmlDocument doc = new XmlDocument();
             doc.LoadXml("<Msg></Msg>");
@@ -213,8 +213,8 @@ namespace HDBPublic
             const int ProgressCount = 10000;
             const int MaxBatchCount = 2000;
             int currentCount = 0;
-            int totalCount = fieldValues.Count;
-            foreach (Dictionary<string, object> fieldValueMap in fieldValues)
+            int totalCount = fieldConditions.Count;
+            foreach (Dictionary<string, object> fieldValueMap in fieldConditions)
             {
                 currentCount++;
                 if (fieldValueMap != null)
