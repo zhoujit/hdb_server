@@ -26,7 +26,16 @@ namespace HDBCLI
                 {
                     try
                     {
-                        ExecuteSQL(inputBuffer.ToString());
+                        string sql = inputBuffer.ToString();
+                        sql = sql.Trim(new char[] { ' ', ';', '\t', '\r', '\n' });
+                        if (sql.Length > 0)
+                        {
+                            if (string.Compare(sql, "exit", true) == 0)
+                            {
+                                Environment.Exit(0);
+                            }
+                            ExecuteSQL(sql);
+                        }
                     }
                     catch (Exception ex)
                     {
@@ -43,12 +52,6 @@ namespace HDBCLI
 
         private void ExecuteSQL(string sql)
         {
-            sql = sql.Trim(new char[] { ' ', ';', '\t', '\r', '\n' });
-            if (sql.Length == 0)
-            {
-                return;
-            }
-
             (bool success, string message, DataTable result) = m_statement.Execute(sql);
             if (result != null)
             {
