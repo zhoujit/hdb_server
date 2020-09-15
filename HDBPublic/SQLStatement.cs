@@ -187,6 +187,37 @@ select * from t1 where f1 = 100;
                     message = string.Format(@"Invalid create table statement:{0}", sql);
                 }
             }
+            else if (sql.StartsWith("show", StringComparison.CurrentCultureIgnoreCase))
+            {
+                Match match = ShowRegex.Match(sql);
+                success = match.Success;
+                if (success)
+                {
+                    string showValue = match.Groups["ShowValue"].Value.Trim();
+                    if (string.Compare(showValue, "tables", true) == 0)
+                    {
+                        stepTime.Start();
+                        result = m_dbClient.GetTableList();
+                        stepTime.Stop();
+                    }
+                    else
+                    {
+                        success = false;
+                        message = string.Format($"Undefined show clause: {showValue}");
+                    }
+                }
+                else
+                {
+                    message = string.Format(@"Invalid show statement:{0}", sql);
+                }
+            }
+            else if (string.Compare(sql, "stop", true) == 0)
+            {
+                string stopMessage;
+                m_dbClient.Stop(out stopMessage);
+                Console.WriteLine("Succeed to stop HDB server.");
+                Environment.Exit(0);
+            }
             //else if (sql.StartsWith("update", StringComparison.CurrentCultureIgnoreCase))
             //{
             //}
@@ -548,7 +579,7 @@ select * from t1 where f1 = 100;
         private readonly static string FieldNamePattern = @"(?<FieldName>[0-9A-Za-z]+)";
         private readonly static string DataTypePattern = @"(?<DataType>(Char)|(Varchar)|(Byte)|(Short)|(Int)|(Long)|(Float)|(Double))";
         private readonly static string WherePattern = @"(?<Where>.+)";
-        private readonly static string FieldValuePattern = @"(?<FieldValue>.+)";
+        private readonly static string ShowPattern = @"show\s+(?<ShowValue>.+)";
 
         private readonly static string SelectPattern = string.Format(@"select\s+\*\s+from\s+{0}\s+where\s+{1}",
             TableNamePattern, WherePattern);
@@ -571,6 +602,7 @@ select * from t1 where f1 = 100;
         private readonly static Regex CreateTableRegex = new Regex(CreateTablePattern, RegexOptions.Singleline | RegexOptions.IgnoreCase);
         private readonly static Regex FieldNameRegex = new Regex("^" + FieldNamePattern + "$", RegexOptions.Singleline | RegexOptions.IgnoreCase);
         private readonly static Regex DataTypeRegex = new Regex("^" + DataTypePattern + "$", RegexOptions.Singleline | RegexOptions.IgnoreCase);
+        private readonly static Regex ShowRegex = new Regex("^" + ShowPattern + "$", RegexOptions.Singleline | RegexOptions.IgnoreCase);
 
     }
 }

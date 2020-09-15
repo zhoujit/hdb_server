@@ -6,6 +6,9 @@ create table Issuers
 );
 
 
+show tables;
+
+
 insert into Issuers(Id, Name, Price) values('S2020', 'ARM 2020', 2020.12345),('S2021', 'ARM 2021', 2021.12345);
 
 

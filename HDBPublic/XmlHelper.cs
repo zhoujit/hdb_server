@@ -49,5 +49,16 @@ namespace HDBPublic
             return elem;
         }
 
+        public static string GetNodeText(XmlNode node, string xpath)
+        {
+            string value = "";
+            XmlNode temp = node.SelectSingleNode(xpath);
+            if (temp != null)
+            {
+                value = temp.InnerText;
+            }
+            return value;
+        }
+
     }
 }

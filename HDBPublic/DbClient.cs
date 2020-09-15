@@ -112,10 +112,45 @@ namespace HDBPublic
             return success;
         }
 
-        public string GetTableList()
+        public DataTable GetTableList()
         {
             // <Msg Op='GetTableList'></Msg>
-            return RequestData(OpType.GetTableList, null);
+            string responseText = RequestData(OpType.GetTableList, null);
+
+            /*
+            <Result Status="1" StatusText="OK">
+                <Table Name="Issuers">
+                    <Column Name="Id" DataType="Varchar" PK="1" CompressType="LZ4" />
+                    <Column Name="Name" DataType="Varchar" CompressType="LZ4" />
+                    <Column Name="Price" DataType="Double" CompressType="LZ4" />
+                </Table>
+            </Result>
+            */
+            DataTable result = new DataTable();
+            result.Columns.Add("TableName", typeof(string));
+            result.Columns.Add("ColumnName", typeof(string));
+            result.Columns.Add("DataType", typeof(string));
+            result.Columns.Add("PK", typeof(bool));
+            result.Columns.Add("CompressType", typeof(string));
+            XmlDocument doc = new XmlDocument();
+            doc.LoadXml(responseText);
+            XmlNodeList tableNodeList = doc.SelectNodes("/Result/Table");
+            foreach (XmlNode tableNode in tableNodeList)
+            {
+                string tableName = XmlHelper.GetNodeText(tableNode, "@Name");
+                XmlNodeList columnNodeList = tableNode.SelectNodes("Column");
+                foreach (XmlNode columnNode in columnNodeList)
+                {
+                    string columnName = XmlHelper.GetNodeText(columnNode, "@Name");
+                    string dataType = XmlHelper.GetNodeText(columnNode, "@DataType");
+                    string pkString = XmlHelper.GetNodeText(columnNode, "@PK");
+                    bool pk = pkString == "1";
+                    string compressType = XmlHelper.GetNodeText(columnNode, "@CompressType");
+                    result.Rows.Add(new object[] { tableName, columnName, dataType, pk, compressType });
+                }
+            }
+            result.AcceptChanges();
+            return result;
         }
 
         public string RemoveTable(string tableName)
