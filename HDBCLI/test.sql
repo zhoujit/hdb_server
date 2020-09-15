@@ -20,3 +20,6 @@ delete from Issuers where Id='S2020';
 
 drop table Issuers;
 
+
+stop
+
