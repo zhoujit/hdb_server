@@ -1,6 +1,6 @@
 ﻿namespace HDBPublic
 {
-    public enum OpType
+    enum OpType
     {
         InvalidOp = 0,
         Get = 1,

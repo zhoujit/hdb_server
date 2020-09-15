@@ -1,6 +1,6 @@
 namespace HDBPublic
 {
-    public class ColumnDefinition
+    class ColumnDefinition
     {
         public string Name;
 
@@ -8,11 +8,14 @@ namespace HDBPublic
 
         public bool PK;
 
-        public ColumnDefinition(string name, DataType dataType, bool pk)
+        public string CompressType;
+
+        public ColumnDefinition(string name, DataType dataType, bool pk, string compressType)
         {
             Name = name;
             DataType = dataType;
             PK = pk;
+            CompressType = compressType;
         }
 
     }

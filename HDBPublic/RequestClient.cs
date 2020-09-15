@@ -6,7 +6,7 @@
     using System;
     using System.Collections.Generic;
 
-    public enum RequestType
+    enum RequestType
     {
         Request = 0,
         Hi = 1,
@@ -19,7 +19,7 @@
         Post = 2,
     }
 
-    public class RequestClient
+    class RequestClient
     {
         private string m_hostName;
         private int m_port;

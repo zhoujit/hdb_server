@@ -2,7 +2,6 @@
 using System.Collections.Generic;
 using System.Data;
 using System.Diagnostics;
-using System.Text;
 using System.Text.RegularExpressions;
 
 namespace HDBPublic
@@ -90,11 +89,102 @@ select * from t1 where f1 = 100;
                     m_dbClient.Delete(tableName, fieldConditions);
                     stepTime.Stop();
 
-                    message = string.Format("Succeed to remove records. Elapsed:{0}s", stepTime.Elapsed.TotalSeconds.ToString("0.###"));
+                    message = string.Format("Succeed to remove record(s). Elapsed:{0}s", stepTime.Elapsed.TotalSeconds.ToString("0.###"));
                 }
                 else
                 {
                     message = string.Format(@"Invalid delete statement:{0}", sql);
+                }
+            }
+            else if (sql.StartsWith("drop", StringComparison.CurrentCultureIgnoreCase))
+            {
+                Match match = DropTableRegex.Match(sql);
+                success = match.Success;
+                if (success)
+                {
+                    string tableName = match.Groups["TableName"].Value.Trim();
+                    stepTime.Start();
+                    m_dbClient.RemoveTable(tableName);
+                    stepTime.Stop();
+                    message = string.Format("Succeed to drop table. Elapsed:{0}s", stepTime.Elapsed.TotalSeconds.ToString("0.###"));
+                }
+                else
+                {
+                    message = string.Format(@"Invalid drop table statement:{0}", sql);
+                }
+            }
+            else if (sql.StartsWith("create", StringComparison.CurrentCultureIgnoreCase))
+            {
+                Match match = CreateTableRegex.Match(sql);
+                success = match.Success;
+                if (success)
+                {
+                    List<ColumnDefinition> columnDefinitions = new List<ColumnDefinition>();
+                    string tableName = match.Groups["TableName"].Value.Trim();
+                    string fieldDefList = match.Groups["FieldDefList"].Value.Trim();
+                    string[] fieldDefs = fieldDefList.Split(new char[] { ',' }, StringSplitOptions.RemoveEmptyEntries);
+                    foreach (string fieldDef in fieldDefs)
+                    {
+                        string[] fieldItems = fieldDef.Split(new char[] { ' ', '\r', '\n', '\t' }, StringSplitOptions.RemoveEmptyEntries);
+                        if (fieldItems.Length >= 2 && fieldItems.Length <= 4)
+                        {
+                            string fieldName = fieldItems[0];
+                            string dataTypeString = fieldItems[1];
+                            bool pk = false;
+                            string compressType = "";
+                            HashSet<string> set = new HashSet<string>();
+                            if (fieldItems.Length > 2)
+                            {
+                                set.Add(fieldItems[2].ToLower());
+                            }
+                            if (fieldItems.Length > 3)
+                            {
+                                set.Add(fieldItems[3].ToLower());
+                            }
+                            if (set.Contains("pk"))
+                            {
+                                pk = true;
+                            }
+                            if (set.Contains("lz4"))
+                            {
+                                compressType = "lz4";
+                            }
+
+                            if (!FieldNameRegex.Match(fieldName).Success)
+                            {
+                                success = false;
+                                message = string.Format($"Invalid field name: {fieldName}");
+                                break;
+                            }
+                            DataType dataType;
+                            if (!DataTypeHelper.TryParse(dataTypeString, out dataType))
+                            {
+                                success = false;
+                                message = string.Format($"Invalid data type: {dataTypeString}");
+                                break;
+                            }
+                            ColumnDefinition columnDefinition = new ColumnDefinition(fieldName, dataType, pk, compressType);
+                            columnDefinitions.Add(columnDefinition);
+                        }
+                        else
+                        {
+                            success = false;
+                            message = string.Format($"Invalid column definition: {fieldDef}");
+                            break;
+                        }
+                    }
+
+                    if (success)
+                    {
+                        stepTime.Start();
+                        m_dbClient.CreateTable(tableName, columnDefinitions);
+                        stepTime.Stop();
+                        message = string.Format("Succeed to create table. Elapsed:{0}s", stepTime.Elapsed.TotalSeconds.ToString("0.###"));
+                    }
+                }
+                else
+                {
+                    message = string.Format(@"Invalid create table statement:{0}", sql);
                 }
             }
             //else if (sql.StartsWith("update", StringComparison.CurrentCultureIgnoreCase))
@@ -456,6 +546,7 @@ select * from t1 where f1 = 100;
 
         private readonly static string TableNamePattern = @"(?<TableName>[0-9A-Za-z]+)";
         private readonly static string FieldNamePattern = @"(?<FieldName>[0-9A-Za-z]+)";
+        private readonly static string DataTypePattern = @"(?<DataType>(Char)|(Varchar)|(Byte)|(Short)|(Int)|(Long)|(Float)|(Double))";
         private readonly static string WherePattern = @"(?<Where>.+)";
         private readonly static string FieldValuePattern = @"(?<FieldValue>.+)";
 
@@ -468,9 +559,18 @@ select * from t1 where f1 = 100;
         private readonly static string DeletePattern = string.Format(@"delete\s+from\s+{0}\s+where\s+{1}",
             TableNamePattern, WherePattern);
 
+        private readonly static string DropTablePattern = string.Format(@"drop\s+table\s+{0}", TableNamePattern);
+
+        private readonly static string CreateTablePattern = string.Format(@"create\s+table\s+{0}\s*\(\s*(?<FieldDefList>.+)\s*\)", TableNamePattern);
+
+
         private readonly static Regex SelectRegex = new Regex(SelectPattern, RegexOptions.Singleline | RegexOptions.IgnoreCase);
         private readonly static Regex InsertRegex = new Regex(InsertPattern, RegexOptions.Singleline | RegexOptions.IgnoreCase);
         private readonly static Regex DeleteRegex = new Regex(DeletePattern, RegexOptions.Singleline | RegexOptions.IgnoreCase);
+        private readonly static Regex DropTableRegex = new Regex(DropTablePattern, RegexOptions.Singleline | RegexOptions.IgnoreCase);
+        private readonly static Regex CreateTableRegex = new Regex(CreateTablePattern, RegexOptions.Singleline | RegexOptions.IgnoreCase);
+        private readonly static Regex FieldNameRegex = new Regex("^" + FieldNamePattern + "$", RegexOptions.Singleline | RegexOptions.IgnoreCase);
+        private readonly static Regex DataTypeRegex = new Regex("^" + DataTypePattern + "$", RegexOptions.Singleline | RegexOptions.IgnoreCase);
 
     }
 }

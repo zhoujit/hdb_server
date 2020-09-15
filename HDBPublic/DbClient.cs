@@ -1,16 +1,11 @@
 using System;
 using System.Collections.Generic;
 using System.Data;
-using System.Diagnostics;
-using System.IO;
-using System.Net.Sockets;
-using System.Text;
-using System.Text.RegularExpressions;
 using System.Xml;
 
 namespace HDBPublic
 {
-    public class DbClient
+    class DbClient
     {
         public readonly string Version = "1.1";
 
@@ -152,6 +147,10 @@ namespace HDBPublic
                 if (columnDefinition.PK)
                 {
                     XmlHelper.SetAttribute(colNode, "PK", columnDefinition.PK ? "1" : "0");
+                }
+                if (!string.IsNullOrWhiteSpace(columnDefinition.CompressType))
+                {
+                    XmlHelper.SetAttribute(colNode, "CompressType", columnDefinition.CompressType);
                 }
             }
 
@@ -312,7 +311,7 @@ namespace HDBPublic
 
     }
 
-    public class BeforeRequestArgs : EventArgs
+    class BeforeRequestArgs : EventArgs
     {
         public readonly string RequestText;
 
@@ -322,7 +321,7 @@ namespace HDBPublic
         }
     }
 
-    public class AfterResponseArgs : EventArgs
+    class AfterResponseArgs : EventArgs
     {
         public readonly string RequestText;
         public readonly string ResponseText;
@@ -334,7 +333,7 @@ namespace HDBPublic
         }
     }
 
-    public class RequestProgressArgs : EventArgs
+    class RequestProgressArgs : EventArgs
     {
         public readonly int TotalCount;
         public readonly int CompleteCount;
