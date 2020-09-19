@@ -159,6 +159,12 @@ namespace HDBPublic
             return RequestData(OpType.RemoveTable, tableName);
         }
 
+        public string TruncateTable(string tableName)
+        {
+            // <Msg Op='TruncateTable' Table='Issuers2'></Msg>
+            return RequestData(OpType.TruncateTable, tableName);
+        }
+
         public void CreateTable(string tableName, List<ColumnDefinition> columnDefinitions)
         {
             XmlDocument doc = new XmlDocument();

@@ -10,6 +10,7 @@
 
         GetTableList = 101,
         CreateTable = 102,
-        RemoveTable = 103
+        RemoveTable = 103,
+        TruncateTable = 104,
     }
 }

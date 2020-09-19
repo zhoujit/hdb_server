@@ -18,6 +18,9 @@ select * from Issuers where Id = 'S2020' or Id = 'S2021';
 delete from Issuers where Id='S2020';
 
 
+truncate table Issuers;
+
+
 drop table Issuers;
 
 

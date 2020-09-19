@@ -113,6 +113,23 @@ select * from t1 where f1 = 100;
                     message = string.Format(@"Invalid drop table statement:{0}", sql);
                 }
             }
+            else if (sql.StartsWith("truncate", StringComparison.CurrentCultureIgnoreCase))
+            {
+                Match match = TruncateTableRegex.Match(sql);
+                success = match.Success;
+                if (success)
+                {
+                    string tableName = match.Groups["TableName"].Value.Trim();
+                    stepTime.Start();
+                    m_dbClient.TruncateTable(tableName);
+                    stepTime.Stop();
+                    message = string.Format("Succeed to truncate table. Elapsed:{0}s", stepTime.Elapsed.TotalSeconds.ToString("0.###"));
+                }
+                else
+                {
+                    message = string.Format(@"Invalid truncate table statement:{0}", sql);
+                }
+            }
             else if (sql.StartsWith("create", StringComparison.CurrentCultureIgnoreCase))
             {
                 Match match = CreateTableRegex.Match(sql);
@@ -592,6 +609,8 @@ select * from t1 where f1 = 100;
 
         private readonly static string DropTablePattern = string.Format(@"drop\s+table\s+{0}", TableNamePattern);
 
+        private readonly static string TruncateTablePattern = string.Format(@"truncate\s+table\s+{0}", TableNamePattern);
+
         private readonly static string CreateTablePattern = string.Format(@"create\s+table\s+{0}\s*\(\s*(?<FieldDefList>.+)\s*\)", TableNamePattern);
 
 
@@ -599,6 +618,7 @@ select * from t1 where f1 = 100;
         private readonly static Regex InsertRegex = new Regex(InsertPattern, RegexOptions.Singleline | RegexOptions.IgnoreCase);
         private readonly static Regex DeleteRegex = new Regex(DeletePattern, RegexOptions.Singleline | RegexOptions.IgnoreCase);
         private readonly static Regex DropTableRegex = new Regex(DropTablePattern, RegexOptions.Singleline | RegexOptions.IgnoreCase);
+        private readonly static Regex TruncateTableRegex = new Regex(TruncateTablePattern, RegexOptions.Singleline | RegexOptions.IgnoreCase);
         private readonly static Regex CreateTableRegex = new Regex(CreateTablePattern, RegexOptions.Singleline | RegexOptions.IgnoreCase);
         private readonly static Regex FieldNameRegex = new Regex("^" + FieldNamePattern + "$", RegexOptions.Singleline | RegexOptions.IgnoreCase);
         private readonly static Regex DataTypeRegex = new Regex("^" + DataTypePattern + "$", RegexOptions.Singleline | RegexOptions.IgnoreCase);
