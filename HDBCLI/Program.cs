@@ -26,5 +26,7 @@ namespace HDBCLI
             new HDBConsole(hostName, port).Run();
         }
 
+        
+
     }
 }

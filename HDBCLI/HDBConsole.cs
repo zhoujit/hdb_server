@@ -17,14 +17,14 @@ namespace HDBCLI
             StringBuilder inputBuffer = new StringBuilder();
             while (true)
             {
-                OutputText(SystemOutputColor, ">", false);
+                ConsoleHelper.OutputMessage(true, ">");
 
                 Console.ResetColor();
                 string line = Console.ReadLine();
                 if (line == null)
                 {
                     inputBuffer.Clear();
-                    OutputText(SystemOutputColor, "\nClear input buffer.");
+                    ConsoleHelper.OutputMessage(true, "\nClear input buffer.");
                     continue;
                 }
                 line = line.TrimEnd();
@@ -48,7 +48,7 @@ namespace HDBCLI
                     catch (Exception ex)
                     {
                         string errorMessage = $"Exception:{ex.Message}\r\nStackTrace:{ex.StackTrace}";
-                        OutputText(ErrorOutputColor, errorMessage);
+                        ConsoleHelper.OutputMessage(false, errorMessage);
                     }
                     finally
                     {
@@ -63,88 +63,16 @@ namespace HDBCLI
             (bool success, string message, DataTable result) = m_statement.Execute(sql);
             if (result != null)
             {
-                OutputResult(result);
+                IOutput output = OutputFactory.CreateInstance(m_session.OutputType);
+                output.Write(result, m_session);
             }
             else
             {
-                OutputMessage(success, message);
+                ConsoleHelper.OutputMessage(success, message);
             }
         }
-
-        private void OutputMessage(bool success, string message)
-        {
-            ConsoleColor outputColor = success ? SuccessOutputColor : ErrorOutputColor;
-            OutputText(outputColor, message);
-        }
-
-        private void OutputResult(DataTable result)
-        {
-            StringBuilder outputBuffer = new StringBuilder();
-            foreach (DataColumn dataColumn in result.Columns)
-            {
-                if (outputBuffer.Length > 0)
-                {
-                    outputBuffer.Append("|");
-                }
-                outputBuffer.Append(dataColumn.ColumnName);
-            }
-            OutputText(ResultOutputColor, outputBuffer);
-
-            foreach (DataRow row in result.Rows)
-            {
-                bool firstColumn = true;
-                foreach (DataColumn dataColumn in result.Columns)
-                {
-                    if (firstColumn)
-                    {
-                        firstColumn = false;
-                    }
-                    else
-                    {
-                        outputBuffer.Append("|");
-                    }
-                    FormatValue(outputBuffer, row, dataColumn);
-                }
-
-                OutputText(ResultOutputColor, outputBuffer);
-            }
-        }
-
-        private void FormatValue(StringBuilder outputBuffer, DataRow row, DataColumn dataColumn)
-        {
-            if (!row.IsNull(dataColumn))
-            {
-                outputBuffer.Append(row[dataColumn]);
-            }
-        }
-
-        private void OutputText(ConsoleColor color, StringBuilder outputBuffer)
-        {
-            OutputText(color, outputBuffer.ToString());
-            outputBuffer.Clear();
-        }
-
-        private void OutputText(ConsoleColor color, string message, bool hasLineFeed = true)
-        {
-            if (color != Console.ForegroundColor)
-            {
-                Console.ForegroundColor = color;
-            }
-            if (hasLineFeed)
-            {
-                Console.WriteLine(message);
-            }
-            else
-            {
-                Console.Write(message);
-            }
-        }
-
-        private static readonly ConsoleColor SystemOutputColor = ConsoleColor.DarkCyan;
-        private static readonly ConsoleColor ErrorOutputColor = ConsoleColor.DarkRed;
-        private static readonly ConsoleColor SuccessOutputColor = ConsoleColor.DarkMagenta;
-        private static readonly ConsoleColor ResultOutputColor = ConsoleColor.DarkBlue;
 
         private SQLStatement m_statement = null;
+        private Session m_session = new Session();
     }
 }
