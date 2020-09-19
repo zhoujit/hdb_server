@@ -1,7 +1,7 @@
-﻿using System;
-
-namespace HDBCLI
+﻿namespace HDBCLI
 {
+    using System;
+
     class Program
     {
         static void Main(string[] args)
@@ -26,7 +26,7 @@ namespace HDBCLI
             new HDBConsole(hostName, port).Run();
         }
 
-        
+
 
     }
 }

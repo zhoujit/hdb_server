@@ -1,10 +1,10 @@
-using System;
-using System.Data;
-using System.Text;
-using HDBPublic;
-
 namespace HDBCLI
 {
+    using System;
+    using System.Data;
+    using System.Text;
+    using HDBPublic;
+
     class HDBConsole
     {
         public HDBConsole(string hostName, int port)
@@ -40,6 +40,14 @@ namespace HDBCLI
                             if (string.Compare(sql, "exit", true) == 0)
                             {
                                 Environment.Exit(0);
+                            }
+                            else if (sql.StartsWith("set", StringComparison.CurrentCultureIgnoreCase))
+                            {
+                                bool success = Session.ApplyConfig(m_session, sql);
+                                if (success)
+                                {
+                                    continue;
+                                }
                             }
 
                             ExecuteSQL(sql);

@@ -1,8 +1,8 @@
-using System;
-using System.Collections.Generic;
-
 namespace HDBCLI
 {
+    using System;
+    using System.Collections.Generic;
+
     class ArgumentParser
     {
         public ArgumentParser(string[] args)
