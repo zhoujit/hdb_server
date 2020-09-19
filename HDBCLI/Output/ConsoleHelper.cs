@@ -5,19 +5,19 @@ namespace HDBCLI
 
     class ConsoleHelper
     {
-        public static void OutputMessage(bool success, string message)
+        public static void OutputMessage(bool success, string message, bool hasLineFeed)
         {
             ConsoleColor outputColor = success ? SuccessOutputColor : ErrorOutputColor;
-            OutputText(outputColor, message, !success);
+            OutputText(outputColor, message, hasLineFeed);
         }
 
-        public static void OutputText(ConsoleColor color, StringBuilder outputBuffer)
+        public static void OutputText(ConsoleColor color, StringBuilder outputBuffer, bool hasLineFeed)
         {
-            OutputText(color, outputBuffer.ToString());
+            OutputText(color, outputBuffer.ToString(), hasLineFeed);
             outputBuffer.Clear();
         }
 
-        public static void OutputText(ConsoleColor color, string message, bool hasLineFeed = true)
+        public static void OutputText(ConsoleColor color, string message, bool hasLineFeed)
         {
             if (color != Console.ForegroundColor)
             {

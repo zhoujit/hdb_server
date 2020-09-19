@@ -14,7 +14,7 @@ namespace HDBCLI
         private void HandleDataLineOutput(object sender, DataLineReadyEventArgs e)
         {
             ConsoleColor color = e.IsHeader ? ConsoleHelper.ResultHeaderOutputColor : ConsoleHelper.ResultOutputColor;
-            ConsoleHelper.OutputText(color, e.DataBlock);
+            ConsoleHelper.OutputText(color, e.DataBlock, false);
             e.DataBlock.Clear();
         }
     }
