@@ -26,3 +26,13 @@ drop table Issuers;
 
 stop
 
+
+
+set output csv;
+set output tabfile;
+set output textfile;
+set output console;
+
+set output compress;
+set output uncompress;
+
