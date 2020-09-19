@@ -4,7 +4,8 @@ namespace HDBCLI
 
     interface IOutput
     {
-        void Prepare();
+        void BeforeWrite();
+        void AfterWrite();
         void Write(DataTable result, Session session);
     }
 }

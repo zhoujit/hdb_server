@@ -11,13 +11,23 @@
             this.DataLineReady += HandleDataLineOutput;
         }
 
-        public override void Prepare()
+        public override void BeforeWrite()
         {
             while (string.IsNullOrWhiteSpace(m_fileName))
             {
-                Console.WriteLine("Input file name:");
+                ConsoleHelper.SystemOutput("Input file name:");
                 m_fileName = Console.ReadLine();
             }
+            string fullFileName = GetFullFileName();
+            if (File.Exists(fullFileName))
+            {
+                File.Delete(fullFileName);
+            }
+        }
+
+        public override void AfterWrite()
+        {
+            ConsoleHelper.SystemOutput("Done.", true, true);
         }
 
         private void HandleDataLineOutput(object sender, DataLineReadyEventArgs e)
@@ -25,10 +35,15 @@
             bool needWriteFile = !e.HasNext || e.DataBlock.Length > 1024 * 1024;
             if (needWriteFile)
             {
-                string fullFileName = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, m_fileName);
+                string fullFileName = GetFullFileName();
                 File.AppendAllText(fullFileName, e.DataBlock.ToString());
                 e.DataBlock.Clear();
             }
+        }
+
+        private string GetFullFileName()
+        {
+            return Path.Combine(AppDomain.CurrentDomain.BaseDirectory, m_fileName);
         }
 
         private string m_fileName = null;

@@ -17,14 +17,14 @@ namespace HDBCLI
             StringBuilder inputBuffer = new StringBuilder();
             while (true)
             {
-                ConsoleHelper.OutputMessage(true, ">", false);
+                ConsoleHelper.SystemOutput(">");
 
                 Console.ResetColor();
                 string line = Console.ReadLine();
                 if (line == null)
                 {
                     inputBuffer.Clear();
-                    ConsoleHelper.OutputMessage(true, "\nClear input buffer.", true);
+                    ConsoleHelper.SystemOutput("\nClear input buffer.", true, true);
                     continue;
                 }
                 line = line.TrimEnd();
@@ -48,7 +48,7 @@ namespace HDBCLI
                     catch (Exception ex)
                     {
                         string errorMessage = $"Exception:{ex.Message}\r\nStackTrace:{ex.StackTrace}";
-                        ConsoleHelper.OutputMessage(false, errorMessage, true);
+                        ConsoleHelper.SystemOutput(errorMessage, false, true);
                     }
                     finally
                     {
@@ -68,7 +68,7 @@ namespace HDBCLI
             }
             else
             {
-                ConsoleHelper.OutputMessage(success, message, true);
+                ConsoleHelper.SystemOutput(message, success, true);
             }
         }
 

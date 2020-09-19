@@ -17,6 +17,8 @@
 
         public virtual void Write(DataTable result, Session session)
         {
+            BeforeWrite();
+
             List<int> columnWidths = CalcColumnWidth(result, session);
             StringBuilder outputBuffer = new StringBuilder();
             for (int colNo = 0; colNo < result.Columns.Count; colNo++)
@@ -47,6 +49,8 @@
             }
 
             DataLineReady?.Invoke(null, new DataLineReadyEventArgs(outputBuffer, false, false));
+
+            AfterWrite();
         }
 
         private List<int> CalcColumnWidth(DataTable result, Session session)
@@ -54,16 +58,20 @@
             List<int> columnWidths = new List<int>();
             foreach (DataColumn col in result.Columns)
             {
-                int width = col.ColumnName.Length;
-                for (int rowNo = 0; rowNo < 100 && rowNo < result.Rows.Count; rowNo++)
+                int width = -1;
+                if (!session.OutputCompactMode && session.OutputType != OutputTypeEnum.CSV && session.OutputType != OutputTypeEnum.TabFile)
                 {
-                    DataRow row = result.Rows[rowNo];
-                    string value = FormatValue(row, col);
-                    if (value != null)
+                    width = col.ColumnName.Length;
+                    for (int rowNo = 0; rowNo < 100 && rowNo < result.Rows.Count; rowNo++)
                     {
-                        if (value.Length > width)
+                        DataRow row = result.Rows[rowNo];
+                        string value = FormatValue(row, col);
+                        if (value != null)
                         {
-                            width = value.Length;
+                            if (value.Length > width)
+                            {
+                                width = value.Length;
+                            }
                         }
                     }
                 }
@@ -96,7 +104,11 @@
             return value;
         }
 
-        public virtual void Prepare()
+        public virtual void BeforeWrite()
+        {
+        }
+
+        public virtual void AfterWrite()
         {
         }
 

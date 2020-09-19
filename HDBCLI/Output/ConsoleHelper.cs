@@ -5,7 +5,7 @@ namespace HDBCLI
 
     class ConsoleHelper
     {
-        public static void OutputMessage(bool success, string message, bool hasLineFeed)
+        public static void SystemOutput(string message, bool success = true, bool hasLineFeed = false)
         {
             ConsoleColor outputColor = success ? SuccessOutputColor : ErrorOutputColor;
             OutputText(outputColor, message, hasLineFeed);
@@ -28,14 +28,12 @@ namespace HDBCLI
                 Console.WriteLine(message);
             }
             else
-            {
+
                 Console.Write(message);
-            }
         }
 
-        public static readonly ConsoleColor SystemOutputColor = ConsoleColor.DarkCyan;
-        public static readonly ConsoleColor ErrorOutputColor = ConsoleColor.DarkRed;
-        public static readonly ConsoleColor SuccessOutputColor = ConsoleColor.DarkMagenta;
+        private static readonly ConsoleColor ErrorOutputColor = ConsoleColor.DarkRed;
+        private static readonly ConsoleColor SuccessOutputColor = ConsoleColor.DarkMagenta;
         public static readonly ConsoleColor ResultHeaderOutputColor = ConsoleColor.DarkBlue;
         public static readonly ConsoleColor ResultOutputColor = ConsoleColor.DarkGreen;
 

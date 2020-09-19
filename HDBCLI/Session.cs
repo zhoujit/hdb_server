@@ -4,7 +4,9 @@ namespace HDBCLI
     {
         Console = 1,
         CSV = 2,
-        TextFile = 3,
+        TabFile = 3,
+        TextFile = 4,
+
     }
 
     class Session

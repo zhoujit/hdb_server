@@ -15,8 +15,11 @@ namespace HDBCLI
                 case OutputTypeEnum.CSV:
                     result = new FileOuput("\r\n", ",");
                     break;
-                case OutputTypeEnum.TextFile:
+                case OutputTypeEnum.TabFile:
                     result = new FileOuput("\r\n", "\t");
+                    break;
+                case OutputTypeEnum.TextFile:
+                    result = new FileOuput("\r\n", "|");
                     break;
 
                 default:
