@@ -1,12 +1,13 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Data;
-using System.Diagnostics;
-using System.Text.RegularExpressions;
-
-namespace HDBPublic
+﻿namespace HDBPublic
 {
-    public class SQLStatement
+    using System;
+    using System.Collections.Generic;
+    using System.Data;
+    using System.Diagnostics;
+    using System.Text.RegularExpressions;
+
+
+    public partial class SQLStatement
     {
         public SQLStatement(string hostName, int port)
         {
@@ -226,6 +227,24 @@ select * from t1 where f1 = 100;
                 else
                 {
                     message = string.Format(@"Invalid show statement:{0}", sql);
+                }
+            }
+            else if (sql.StartsWith("imp", StringComparison.CurrentCultureIgnoreCase))
+            {
+                Match match = ImportTableRegex.Match(sql);
+                success = match.Success;
+                if (success)
+                {
+                    string tableName = match.Groups["TableName"].Value.Trim();
+                    string fileName = match.Groups["FileName"].Value.Trim();
+                    stepTime.Start();
+                    ImportTable(tableName, fileName);
+                    stepTime.Stop();
+                    message = string.Format("Succeed to import data. Elapsed:{0}s", stepTime.Elapsed.TotalSeconds.ToString("0.###"));
+                }
+                else
+                {
+                    message = string.Format(@"Invalid imp statement:{0}", sql);
                 }
             }
             else if (string.Compare(sql, "stop", true) == 0)
@@ -597,6 +616,7 @@ select * from t1 where f1 = 100;
         private readonly static string DataTypePattern = @"(?<DataType>(Char)|(Varchar)|(Byte)|(Short)|(Int)|(Long)|(Float)|(Double))";
         private readonly static string WherePattern = @"(?<Where>.+)";
         private readonly static string ShowPattern = @"show\s+(?<ShowValue>.+)";
+        private readonly static string FileNamePattern = @"(?<FileName>[0-9A-Za-z.-_]+)";
 
         private readonly static string SelectPattern = string.Format(@"select\s+\*\s+from\s+{0}\s+where\s+{1}",
             TableNamePattern, WherePattern);
@@ -611,6 +631,8 @@ select * from t1 where f1 = 100;
 
         private readonly static string TruncateTablePattern = string.Format(@"truncate\s+table\s+{0}", TableNamePattern);
 
+        private readonly static string ImportTablePattern = string.Format(@"imp\s+{0}\s+file\s*=\s*{1}", TableNamePattern, FileNamePattern);
+
         private readonly static string CreateTablePattern = string.Format(@"create\s+table\s+{0}\s*\(\s*(?<FieldDefList>.+)\s*\)", TableNamePattern);
 
 
@@ -619,6 +641,7 @@ select * from t1 where f1 = 100;
         private readonly static Regex DeleteRegex = new Regex(DeletePattern, RegexOptions.Singleline | RegexOptions.IgnoreCase);
         private readonly static Regex DropTableRegex = new Regex(DropTablePattern, RegexOptions.Singleline | RegexOptions.IgnoreCase);
         private readonly static Regex TruncateTableRegex = new Regex(TruncateTablePattern, RegexOptions.Singleline | RegexOptions.IgnoreCase);
+        private readonly static Regex ImportTableRegex = new Regex(ImportTablePattern, RegexOptions.Singleline | RegexOptions.IgnoreCase);
         private readonly static Regex CreateTableRegex = new Regex(CreateTablePattern, RegexOptions.Singleline | RegexOptions.IgnoreCase);
         private readonly static Regex FieldNameRegex = new Regex("^" + FieldNamePattern + "$", RegexOptions.Singleline | RegexOptions.IgnoreCase);
         private readonly static Regex DataTypeRegex = new Regex("^" + DataTypePattern + "$", RegexOptions.Singleline | RegexOptions.IgnoreCase);

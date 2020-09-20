@@ -10,6 +10,18 @@ namespace HDBCLI
         public HDBConsole(string hostName, int port)
         {
             m_statement = new SQLStatement(hostName, port);
+            m_statement.ImpProgress += (object sender, ImpProgressEventArgs args) =>
+            {
+                if (args.HasNext)
+                {
+                    ConsoleHelper.SystemOutput($"CurrentTotalCount:{args.CurrentTotalCount}, GrandTotalCount:{args.GrandTotalCount}", true, true);
+                }
+                else
+                {
+                    ConsoleHelper.SystemOutput($"Done. GrandTotalCount:{args.GrandTotalCount}", true, true);
+                }
+            };
+
         }
 
         public void Run()

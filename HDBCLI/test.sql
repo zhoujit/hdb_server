@@ -24,7 +24,7 @@ truncate table Issuers;
 drop table Issuers;
 
 
-stop
+stop;
 
 
 
@@ -35,4 +35,10 @@ set output console;
 
 set output compress;
 set output uncompress;
+
+
+imp Issuers file=d:\temp\imptest.txt;
+
+
+-- exp Issuers file=d:\temp\exptest.txt
 

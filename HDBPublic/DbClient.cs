@@ -1,10 +1,11 @@
-using System;
-using System.Collections.Generic;
-using System.Data;
-using System.Xml;
-
 namespace HDBPublic
 {
+    using System;
+    using System.Collections.Generic;
+    using System.Data;
+    using System.Xml;
+
+
     class DbClient
     {
         public readonly string Version = "1.1";
