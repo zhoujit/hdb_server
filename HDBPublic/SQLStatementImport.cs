@@ -11,7 +11,7 @@ namespace HDBPublic
 
         void ImportTable(string tableName, string fileName, string lineSeparator = "\n", string colSeparator = ",")
         {
-            const int MAXBUFFERSIZE = 20;//;1024 * 1024 * 4;
+            const int MAXBUFFERSIZE = 1024 * 1024 * 4;
             char[] buffer = new char[MAXBUFFERSIZE];
             long grandTotalCount = 0;
             long currentTotalCount = 0;
