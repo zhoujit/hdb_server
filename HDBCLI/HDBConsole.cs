@@ -29,7 +29,7 @@ namespace HDBCLI
             StringBuilder inputBuffer = new StringBuilder();
             while (true)
             {
-                ConsoleHelper.SystemOutput(">");
+                ConsoleHelper.OutputText(ConsoleHelper.PromptOutputColor, ">", false);
 
                 Console.ResetColor();
                 string line = Console.ReadLine();

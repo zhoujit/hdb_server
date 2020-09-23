@@ -36,6 +36,7 @@ namespace HDBCLI
         private static readonly ConsoleColor SuccessOutputColor = ConsoleColor.DarkMagenta;
         public static readonly ConsoleColor ResultHeaderOutputColor = ConsoleColor.DarkBlue;
         public static readonly ConsoleColor ResultOutputColor = ConsoleColor.DarkGreen;
+        public static readonly ConsoleColor PromptOutputColor = ConsoleColor.Red;
 
     }
 }
