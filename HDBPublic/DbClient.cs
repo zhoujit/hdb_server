@@ -27,22 +27,22 @@ namespace HDBPublic
             m_requestClient = new RequestClient(hostName, port);
         }
 
-        public void Add(string tableName, List<Dictionary<string, object>> fieldConditions)
+        public void Add(string tableName, List<Dictionary<string, Tuple<Object, PredicateType>>> fieldConditions)
         {
             RequestData(OpType.Add, tableName, fieldConditions);
         }
 
-        public void Update(string tableName, List<Dictionary<string, object>> fieldConditions)
+        public void Update(string tableName, List<Dictionary<string, Tuple<Object, PredicateType>>> fieldConditions)
         {
             RequestData(OpType.Update, tableName, fieldConditions);
         }
 
-        public void Delete(string tableName, List<Dictionary<string, object>> fieldConditions)
+        public void Delete(string tableName, List<Dictionary<string, Tuple<Object, PredicateType>>> fieldConditions)
         {
             RequestData(OpType.Del, tableName, fieldConditions);
         }
 
-        public DataTable Query(string tableName, List<Dictionary<string, object>> fieldConditions)
+        public DataTable Query(string tableName, List<Dictionary<string, Tuple<Object, PredicateType>>> fieldConditions)
         {
             DataTable result = new DataTable();
             List<string> responseResult = RequestData(OpType.Get, tableName, fieldConditions);
@@ -239,7 +239,7 @@ namespace HDBPublic
             return responseXml;
         }
 
-        public List<string> RequestData(OpType op, string tableName, List<Dictionary<string, object>> fieldConditions)
+        public List<string> RequestData(OpType op, string tableName, List<Dictionary<string, Tuple<Object, PredicateType>>> fieldConditions)
         {
             XmlDocument doc = new XmlDocument();
             doc.LoadXml("<Msg></Msg>");
@@ -255,7 +255,7 @@ namespace HDBPublic
             const int MaxBatchCount = 2000;
             int currentCount = 0;
             int totalCount = fieldConditions.Count;
-            foreach (Dictionary<string, object> fieldValueMap in fieldConditions)
+            foreach (Dictionary<string, Tuple<Object, PredicateType>> fieldValueMap in fieldConditions)
             {
                 currentCount++;
                 if (fieldValueMap != null)
@@ -264,8 +264,15 @@ namespace HDBPublic
                     msgNode.AppendChild(dataNode);
                     foreach (string key in fieldValueMap.Keys)
                     {
-                        string val = ConvertValueToString(fieldValueMap[key]);
-                        XmlHelper.AddSubNode(dataNode, key, val);
+                        string val = ConvertValueToString(fieldValueMap[key].Item1);
+                        if (fieldValueMap[key].Item2 == PredicateType.EQ)
+                        {
+                            XmlHelper.AddSubNode(dataNode, key, val);
+                        }
+                        else
+                        {
+                            XmlHelper.AddSubNodeWithPredicateType(dataNode, key, val, fieldValueMap[key].Item2);
+                        }
                     }
                 }
 

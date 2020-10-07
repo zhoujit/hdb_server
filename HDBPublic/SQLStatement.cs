@@ -29,7 +29,7 @@
                     string tableName = match.Groups["TableName"].Value.Trim();
                     string whereStatement = match.Groups["Where"].Value.Trim();
 
-                    List<Dictionary<string, object>> fieldConditions = ParseWhereStatement(whereStatement);
+                    List<Dictionary<string, Tuple<Object, PredicateType>>> fieldConditions = ParseWhereStatement(whereStatement);
 
                     stepTime.Start();
                     result = m_dbClient.Query(tableName, fieldConditions);
@@ -59,7 +59,7 @@ select * from t1 where f1 = 100;
                     string fieldNameList = match.Groups["FieldNameList"].Value;
                     string fieldValueList = match.Groups["FieldValueList"].Value;
 
-                    List<Dictionary<string, object>> fieldConditions = new List<Dictionary<string, object>>();
+                    List<Dictionary<string, Tuple<Object, PredicateType>>> fieldConditions = new List<Dictionary<string, Tuple<Object, PredicateType>>>();
                     success = FillFieldValue(fieldNameList, fieldValueList, fieldConditions, out message);
                     if (success)
                     {
@@ -84,7 +84,7 @@ select * from t1 where f1 = 100;
                     string tableName = match.Groups["TableName"].Value.Trim();
                     string whereStatement = match.Groups["Where"].Value.Trim();
 
-                    List<Dictionary<string, object>> fieldConditions = ParseWhereStatement(whereStatement);
+                    List<Dictionary<string, Tuple<Object, PredicateType>>> fieldConditions = ParseWhereStatement(whereStatement);
 
                     stepTime.Start();
                     m_dbClient.Delete(tableName, fieldConditions);
@@ -264,13 +264,15 @@ select * from t1 where f1 = 100;
             return (success, message, result);
         }
 
-        private List<Dictionary<string, object>> ParseWhereStatement(string whereStatement)
+        private List<Dictionary<string, Tuple<Object, PredicateType>>> ParseWhereStatement(string whereStatement)
         {
-            List<Dictionary<string, object>> result = new List<Dictionary<string, object>>();
+            List<Dictionary<string, Tuple<Object, PredicateType>>> result = new List<Dictionary<string, Tuple<Object, PredicateType>>>();
             whereStatement = whereStatement + " ";
             List<char> splitterChars = new List<char>() { ' ', '\t', '\r', '\n' };
-            Dictionary<string, object> filterLine = new Dictionary<string, object>();
+            List<char> predicateChars = new List<char>() { '=', '<', '>' };
+            Dictionary<string, Tuple<Object, PredicateType>> filterLine = new Dictionary<string, Tuple<Object, PredicateType>>();
             bool isName = true;
+            PredicateType predicateType = PredicateType.EQ;
             int? startIndex = null;
             int? endIndex = null;
             string lastFieldName = null;
@@ -295,7 +297,7 @@ select * from t1 where f1 = 100;
                         continue;
                     }
 
-                    if (splitterChars.Contains(c) || c == '=')
+                    if (splitterChars.Contains(c) || predicateChars.Contains(c))
                     {
                         endIndex = i;
 
@@ -305,13 +307,46 @@ select * from t1 where f1 = 100;
                         endIndex = null;
                         isName = false;
 
-                        while (i < whereStatement.Length)
+                        // Locate next word
+                        while (i < whereStatement.Length && splitterChars.Contains(whereStatement[i]))
                         {
-                            if (whereStatement[i] == '=')
-                            {
-                                break;
-                            }
                             i++;
+                        }
+                        string nextWord = "";
+                        int j = i;
+                        // Find =, <, <=, >, >=
+                        while (j < whereStatement.Length && predicateChars.Contains(whereStatement[j]))
+                        {
+                            nextWord += whereStatement[j];
+                            j++;
+                        }
+
+                        if (nextWord.Length == 0)
+                        {
+                            // Find like.
+                            j = i;
+                            while (j < whereStatement.Length && !splitterChars.Contains(whereStatement[j]))
+                            {
+                                nextWord += whereStatement[j];
+                                j++;
+                            }
+                        }
+
+                        if (PredicateTypeHelper.TryParse(nextWord, out predicateType))
+                        {
+                            if (predicateType == PredicateType.LIKE)
+                            {
+                                i = j;
+                            }
+                            else
+                            {
+                                i = j - 1;
+                            }
+                            continue;
+                        }
+                        else
+                        {
+                            throw new Exception($"Invalid predicate type: {nextWord}");
                         }
                     }
                 }
@@ -379,7 +414,7 @@ select * from t1 where f1 = 100;
                         {
                             fieldValue = fieldValue.Substring(1);
                         }
-                        filterLine.Add(lastFieldName, fieldValue.Replace("\'\'", "\'"));
+                        filterLine.Add(lastFieldName, new Tuple<object, PredicateType>(fieldValue.Replace("\'\'", "\'"), predicateType));
 
                         startIndex = null;
                         endIndex = null;
@@ -406,7 +441,7 @@ select * from t1 where f1 = 100;
                             if (filterLine.Count > 0)
                             {
                                 result.Add(filterLine);
-                                filterLine = new Dictionary<string, object>();
+                                filterLine = new Dictionary<string, Tuple<object, PredicateType>>();
                             }
 
                             i += 2;
@@ -436,7 +471,7 @@ select * from t1 where f1 = 100;
             return result;
         }
 
-        private bool FillFieldValue(string fieldNameList, string fieldValueList, List<Dictionary<string, object>> valueSet, out string errorMessage)
+        private bool FillFieldValue(string fieldNameList, string fieldValueList, List<Dictionary<string, Tuple<Object, PredicateType>>> valueSet, out string errorMessage)
         {
             bool result = true;
             errorMessage = "";
@@ -468,10 +503,10 @@ select * from t1 where f1 = 100;
 
                     if (result)
                     {
-                        Dictionary<string, object> fieldNameValues = new Dictionary<string, object>();
+                        Dictionary<string, Tuple<Object, PredicateType>> fieldNameValues = new Dictionary<string, Tuple<Object, PredicateType>>();
                         for (int i = 0; i < fieldNames.Length; i++)
                         {
-                            fieldNameValues.Add(fieldNames[i].Trim(), fieldValues[i]);
+                            fieldNameValues.Add(fieldNames[i].Trim(), new Tuple<Object, PredicateType>(fieldValues[i], PredicateType.EQ));
                         }
                         if (fieldNameValues.Count > 0)
                         {

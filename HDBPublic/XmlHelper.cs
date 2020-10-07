@@ -26,6 +26,22 @@ namespace HDBPublic
             return elem;
         }
 
+        public static XmlNode AddSubNodeWithPredicateType(XmlNode node, string name, string val, PredicateType predicateType)
+        {
+            XmlNode elem = node.OwnerDocument.CreateElement(name);
+            if (val == null)
+            {
+                SetAttribute(elem, "Nil", "1");
+            }
+            else
+            {
+                elem.InnerText = val;
+            }
+            SetAttribute(elem, "Op", predicateType.ToString());
+            node.AppendChild(elem);
+            return elem;
+        }
+
         public static void SetAttribute(XmlNode node, string name, string val)
         {
             XmlAttribute temp = node.Attributes[name];

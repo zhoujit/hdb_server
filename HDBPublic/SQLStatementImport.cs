@@ -16,7 +16,7 @@ namespace HDBPublic
             long grandTotalCount = 0;
             long currentTotalCount = 0;
             List<string> columns = new List<string>();
-            List<Dictionary<string, object>> fieldConditions = new List<Dictionary<string, object>>();
+            List<Dictionary<string, Tuple<Object, PredicateType>>> fieldConditions = new List<Dictionary<string, Tuple<Object, PredicateType>>>();
             using (StreamReader reader = new StreamReader(fileName))
             {
                 int offset = 0;
@@ -70,10 +70,10 @@ namespace HDBPublic
                                 grandTotalCount++;
                                 currentTotalCount++;
                                 string[] items = line.Split(new string[] { colSeparator }, StringSplitOptions.None);
-                                Dictionary<string, object> valueMap = new Dictionary<string, object>();
+                                Dictionary<string, Tuple<Object, PredicateType>> valueMap = new Dictionary<string, Tuple<Object, PredicateType>>();
                                 for (int i = 0; i < items.Length && i < columns.Count; i++)
                                 {
-                                    valueMap.Add(columns[i], items[i]);
+                                    valueMap.Add(columns[i], new Tuple<Object, PredicateType>(items[i], PredicateType.EQ));
                                 }
                                 fieldConditions.Add(valueMap);
 
