@@ -85,6 +85,7 @@ namespace HDBCLI
             {
                 IOutput output = OutputFactory.CreateInstance(m_session.OutputType);
                 output.Write(result, m_session);
+                ConsoleHelper.SystemOutput(message, success, true);
             }
             else
             {
