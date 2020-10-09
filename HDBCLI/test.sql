@@ -1,4 +1,4 @@
-create table Issuers126890
+create table Issuers
 (
     Id varchar pk lz4,
     Name varchar lz4,
@@ -21,6 +21,8 @@ select * from Issuers where Id>='B19997' or Id='B19966' or Id like 'B1055%';
 select * from Issuers where Name like 'BATCH_10088%';
 select * from Issuers where Price >= 280;
 
+select top 5 * from Issuers where Name like 'BATCH_10088%';
+select * from Issuers where Price >= 280 limit 5;
 
 -- Currently in and operator, don't allow same column name, for example: Id>'B19901' and Id<'B19909'.
 select * from Issuers where Id>'B19909' and Name <='BATCH_10088';
