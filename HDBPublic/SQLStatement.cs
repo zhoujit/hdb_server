@@ -22,17 +22,51 @@
             DataTable result = null;
             if (sql.StartsWith("select", StringComparison.CurrentCultureIgnoreCase))
             {
-                Match match = SelectRegex.Match(sql);
-                success = match.Success;
+                Match match = null;
+                foreach (var selectRegex in SelectRegexes)
+                {
+                    match = selectRegex.Match(sql);
+                    success = match.Success;
+                    if (success)
+                    {
+                        break;
+                    }
+                }
+
                 if (success)
                 {
                     string tableName = match.Groups["TableName"].Value.Trim();
                     string whereStatement = match.Groups["Where"].Value.Trim();
+                    string limitString = "";
+                    if (match.Groups["Limit"]?.Value != null && match.Groups["Limit"].Value.Length > 0)
+                    {
+                        limitString = match.Groups["Limit"].Value;
+                    }
+                    if (match.Groups["TopN"]?.Value != null && match.Groups["TopN"].Value.Length > 0)
+                    {
+                        limitString = match.Groups["TopN"].Value;
+                    }
+                    int? limit = null;
+                    if (!string.IsNullOrWhiteSpace(limitString))
+                    {
+                        int temp;
+                        if (int.TryParse(limitString, out temp))
+                        {
+                            if (temp > 0)
+                            {
+                                limit = temp;
+                            }
+                            else
+                            {
+                                throw new Exception("Limit/top must greater than 0.");
+                            }
+                        }
+                    }
 
                     List<Dictionary<string, Tuple<Object, PredicateType>>> fieldConditions = ParseWhereStatement(whereStatement);
 
                     stepTime.Start();
-                    result = m_dbClient.Query(tableName, fieldConditions);
+                    result = m_dbClient.Query(tableName, fieldConditions, limit);
                     stepTime.Stop();
 
                     message = string.Format("Returned {0} record(s). Elapsed:{1}s\n", result.Rows.Count, stepTime.Elapsed.TotalSeconds.ToString("0.###"));
@@ -653,11 +687,18 @@ select * from t1 where f1 = 100;
         private readonly static string ShowPattern = @"show\s+(?<ShowValue>.+)";
         private readonly static string FileNamePattern = @"(?<FileName>[0-9A-Za-z.-_]+)";
 
+        private readonly static string TopNPattern = @"top\s+(?<TopN>\d{1,10})";
+        private readonly static string LimitPattern = @"limit\s+(?<Limit>\d{1,10})";
+
         private readonly static string SelectPattern = string.Format(@"select\s+\*\s+from\s+{0}\s+where\s+{1}",
             TableNamePattern, WherePattern);
+        private readonly static string SelectPattern2 = string.Format(@"select\s+{2}\s+\*\s+from\s+{0}\s+where\s+{1}",
+            TableNamePattern, WherePattern, TopNPattern);
+        private readonly static string SelectPattern3 = string.Format(@"select\s+\*\s+from\s+{0}\s+where\s+{1}\s+{2}",
+            TableNamePattern, WherePattern, LimitPattern);
 
-        private readonly static string InsertPattern = string.Format(@"insert\s+into\s+{0}\s*\(\s*(?<FieldNameList>.+)\s*\)\s+values\s*\((?<FieldValueList>.+)\s*\)"
-            , TableNamePattern);
+        private readonly static string InsertPattern = string.Format(@"insert\s+into\s+{0}\s*\(\s*(?<FieldNameList>.+)\s*\)\s+values\s*\((?<FieldValueList>.+)\s*\)",
+            TableNamePattern);
 
         private readonly static string DeletePattern = string.Format(@"delete\s+from\s+{0}\s+where\s+{1}",
             TableNamePattern, WherePattern);
@@ -671,7 +712,11 @@ select * from t1 where f1 = 100;
         private readonly static string CreateTablePattern = string.Format(@"create\s+table\s+{0}\s*\(\s*(?<FieldDefList>.+)\s*\)", TableNamePattern);
 
 
-        private readonly static Regex SelectRegex = new Regex(SelectPattern, RegexOptions.Singleline | RegexOptions.IgnoreCase);
+        private readonly static Regex[] SelectRegexes = {
+            new Regex(SelectPattern2, RegexOptions.Singleline | RegexOptions.IgnoreCase),
+            new Regex(SelectPattern3, RegexOptions.Singleline | RegexOptions.IgnoreCase),
+            new Regex(SelectPattern, RegexOptions.Singleline | RegexOptions.IgnoreCase)
+        };
         private readonly static Regex InsertRegex = new Regex(InsertPattern, RegexOptions.Singleline | RegexOptions.IgnoreCase);
         private readonly static Regex DeleteRegex = new Regex(DeletePattern, RegexOptions.Singleline | RegexOptions.IgnoreCase);
         private readonly static Regex DropTableRegex = new Regex(DropTablePattern, RegexOptions.Singleline | RegexOptions.IgnoreCase);

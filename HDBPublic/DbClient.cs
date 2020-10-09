@@ -29,23 +29,23 @@ namespace HDBPublic
 
         public void Add(string tableName, List<Dictionary<string, Tuple<Object, PredicateType>>> fieldConditions)
         {
-            RequestData(OpType.Add, tableName, fieldConditions);
+            RequestData(OpType.Add, tableName, fieldConditions, null);
         }
 
         public void Update(string tableName, List<Dictionary<string, Tuple<Object, PredicateType>>> fieldConditions)
         {
-            RequestData(OpType.Update, tableName, fieldConditions);
+            RequestData(OpType.Update, tableName, fieldConditions, null);
         }
 
         public void Delete(string tableName, List<Dictionary<string, Tuple<Object, PredicateType>>> fieldConditions)
         {
-            RequestData(OpType.Del, tableName, fieldConditions);
+            RequestData(OpType.Del, tableName, fieldConditions, null);
         }
 
-        public DataTable Query(string tableName, List<Dictionary<string, Tuple<Object, PredicateType>>> fieldConditions)
+        public DataTable Query(string tableName, List<Dictionary<string, Tuple<Object, PredicateType>>> fieldConditions, int? limit = null)
         {
             DataTable result = new DataTable();
-            List<string> responseResult = RequestData(OpType.Get, tableName, fieldConditions);
+            List<string> responseResult = RequestData(OpType.Get, tableName, fieldConditions, limit);
             foreach (string responseText in responseResult)
             {
                 XmlDocument doc = new XmlDocument();
@@ -239,7 +239,7 @@ namespace HDBPublic
             return responseXml;
         }
 
-        public List<string> RequestData(OpType op, string tableName, List<Dictionary<string, Tuple<Object, PredicateType>>> fieldConditions)
+        public List<string> RequestData(OpType op, string tableName, List<Dictionary<string, Tuple<Object, PredicateType>>> fieldConditions, int? limit = null)
         {
             XmlDocument doc = new XmlDocument();
             doc.LoadXml("<Msg></Msg>");
@@ -248,6 +248,10 @@ namespace HDBPublic
             if (!string.IsNullOrEmpty(tableName))
             {
                 XmlHelper.AddAttribute(msgNode, "Table", tableName);
+            }
+            if (limit != null)
+            {
+                XmlHelper.AddAttribute(msgNode, "Limit", limit.Value.ToString("0"));
             }
 
             List<string> result = new List<string>();
