@@ -53,6 +53,7 @@ set output uncompress;
 
 imp Issuers file=d:\temp\imptest.txt;
 
+server imp Issuers file=./log/imptest_100K.txt logfile=./log/imptest_100K.log;
 
 -- exp Issuers file=d:\temp\exptest.txt
 

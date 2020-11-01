@@ -281,6 +281,25 @@ select * from t1 where f1 = 100;
                     message = string.Format(@"Invalid imp statement:{0}", sql);
                 }
             }
+            else if (sql.StartsWith("server", StringComparison.CurrentCultureIgnoreCase))
+            {
+                Match match = ServerImportTableRegex.Match(sql);
+                success = match.Success;
+                if (success)
+                {
+                    string tableName = match.Groups["TableName"].Value.Trim();
+                    string fileName = match.Groups["FileName"].Value.Trim();
+                    string logFileName = match.Groups["LogFileName"].Value.Trim();
+                    stepTime.Start();
+                    m_dbClient.ServerImportTable(tableName, fileName, logFileName);
+                    stepTime.Stop();
+                    message = "Please check log file in the server.";
+                }
+                else
+                {
+                    message = string.Format(@"Invalid imp statement:{0}", sql);
+                }
+            }
             else if (string.Compare(sql, "stop", true) == 0)
             {
                 string stopMessage;
@@ -686,6 +705,7 @@ select * from t1 where f1 = 100;
         private readonly static string WherePattern = @"(?<Where>.+)";
         private readonly static string ShowPattern = @"show\s+(?<ShowValue>.+)";
         private readonly static string FileNamePattern = @"(?<FileName>[0-9A-Za-z.-_]+)";
+        private readonly static string LogFileNamePattern = @"(?<LogFileName>[0-9A-Za-z.-_]+)";
 
         private readonly static string TopNPattern = @"top\s+(?<TopN>\d{1,10})";
         private readonly static string LimitPattern = @"limit\s+(?<Limit>\d{1,10})";
@@ -708,6 +728,8 @@ select * from t1 where f1 = 100;
         private readonly static string TruncateTablePattern = string.Format(@"truncate\s+table\s+{0}", TableNamePattern);
 
         private readonly static string ImportTablePattern = string.Format(@"imp\s+{0}\s+file\s*=\s*{1}", TableNamePattern, FileNamePattern);
+        private readonly static string ServerImportTablePattern = string.Format(@"server\s+imp\s+{0}\s+file\s*=\s*{1}\s+logfile\s*=\s*{2}",
+            TableNamePattern, FileNamePattern, LogFileNamePattern);
 
         private readonly static string CreateTablePattern = string.Format(@"create\s+table\s+{0}\s*\(\s*(?<FieldDefList>.+)\s*\)", TableNamePattern);
 
@@ -722,6 +744,8 @@ select * from t1 where f1 = 100;
         private readonly static Regex DropTableRegex = new Regex(DropTablePattern, RegexOptions.Singleline | RegexOptions.IgnoreCase);
         private readonly static Regex TruncateTableRegex = new Regex(TruncateTablePattern, RegexOptions.Singleline | RegexOptions.IgnoreCase);
         private readonly static Regex ImportTableRegex = new Regex(ImportTablePattern, RegexOptions.Singleline | RegexOptions.IgnoreCase);
+        private readonly static Regex ServerImportTableRegex = new Regex(ServerImportTablePattern, RegexOptions.Singleline | RegexOptions.IgnoreCase);
+
         private readonly static Regex CreateTableRegex = new Regex(CreateTablePattern, RegexOptions.Singleline | RegexOptions.IgnoreCase);
         private readonly static Regex FieldNameRegex = new Regex("^" + FieldNamePattern + "$", RegexOptions.Singleline | RegexOptions.IgnoreCase);
         private readonly static Regex DataTypeRegex = new Regex("^" + DataTypePattern + "$", RegexOptions.Singleline | RegexOptions.IgnoreCase);

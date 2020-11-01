@@ -160,6 +160,12 @@ namespace HDBPublic
             return RequestData(OpType.RemoveTable, tableName);
         }
 
+        public string ServerImportTable(string tableName, string fileName, string logFileName)
+        {
+            // <Msg Op='ImportTable' Table='Issuers' File='d:\\a.txt' LogFile='d:\\a.log'></Msg>
+            return ImpExpData(OpType.ImportTable, tableName, fileName, logFileName);
+        }
+
         public string TruncateTable(string tableName)
         {
             // <Msg Op='TruncateTable' Table='Issuers2'></Msg>
@@ -239,6 +245,38 @@ namespace HDBPublic
             return responseXml;
         }
 
+        private string ImpExpData(OpType op, string tableName, string fileName, string logFileName)
+        {
+            XmlDocument doc = new XmlDocument();
+            doc.LoadXml("<Msg></Msg>");
+            XmlNode msgNode = doc.SelectSingleNode("/Msg");
+            XmlHelper.AddAttribute(msgNode, "Op", op.ToString());
+            if (!string.IsNullOrEmpty(tableName))
+            {
+                XmlHelper.AddAttribute(msgNode, "Table", tableName);
+            }
+            XmlHelper.AddAttribute(msgNode, "File", fileName);
+            XmlHelper.AddAttribute(msgNode, "LogFile", logFileName);
+
+            string responseXml = SendRequest(RequestType.Request, doc.OuterXml, true);
+            if (!string.IsNullOrEmpty(responseXml))
+            {
+                XmlDocument docResponse = new XmlDocument();
+                docResponse.LoadXml(responseXml);
+                XmlNode statusNode = docResponse.SelectSingleNode("/Result/@Status");
+                if (statusNode == null)
+                {
+                    throw new ApplicationException("Invalid response.");
+                }
+                if (statusNode.InnerText != "1")
+                {
+                    throw new ApplicationException(string.Format("Request failed: {0}",
+                        docResponse.SelectSingleNode("/Result/@StatusText").InnerText));
+                }
+            }
+            return "";
+        }
+
         public List<string> RequestData(OpType op, string tableName, List<Dictionary<string, Tuple<Object, PredicateType>>> fieldConditions, int? limit = null)
         {
             XmlDocument doc = new XmlDocument();
@@ -316,7 +354,7 @@ namespace HDBPublic
             return result;
         }
 
-        private string SendRequest(RequestType requestType, string requestText)
+        private string SendRequest(RequestType requestType, string requestText, bool noNeedReturn = false)
         {
             if (requestType == RequestType.Request && string.IsNullOrEmpty(requestText))
             {
@@ -324,7 +362,7 @@ namespace HDBPublic
             }
 
             BeforeRequest?.Invoke(null, new BeforeRequestArgs(requestText));
-            string responseText = m_requestClient.Call(requestType, requestText);
+            string responseText = m_requestClient.Call(requestType, requestText, noNeedReturn);
             AfterResponse?.Invoke(null, new AfterResponseArgs(requestText, responseText));
             return responseText;
         }

@@ -12,5 +12,6 @@
         CreateTable = 102,
         RemoveTable = 103,
         TruncateTable = 104,
+        ImportTable = 105,
     }
 }

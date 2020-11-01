@@ -39,7 +39,7 @@
             };
         }
 
-        public string Call(RequestType requestType, string body)
+        public string Call(RequestType requestType, string body, bool noNeedReturn)
         {
             var requestInfo = m_requestMap[requestType];
             string url = string.Format($"http://{m_hostName}:{m_port}/{requestInfo.req}");
@@ -56,12 +56,30 @@
                 }
             }
 
-            using (HttpWebResponse webResponsee = (HttpWebResponse)webRequest.GetResponse())
+            if (noNeedReturn)
             {
-                using (StreamReader reader = new StreamReader(webResponsee.GetResponseStream(), Encoding.UTF8))
+                try
                 {
-                    return reader.ReadToEnd();
+                    webRequest.Timeout = 1000 * 3;
+                    using (HttpWebResponse webResponse = (HttpWebResponse)webRequest.GetResponse())
+                    using (StreamReader reader = new StreamReader(webResponse.GetResponseStream(), Encoding.UTF8))
+                    {
+                        return reader.ReadToEnd();
+                    }
                 }
+                catch (WebException ex)
+                {
+                    if (ex.Status != WebExceptionStatus.Timeout)
+                    {
+                        throw;
+                    }
+                }
+                return "";
+            }
+            using (HttpWebResponse webResponse = (HttpWebResponse)webRequest.GetResponse())
+            using (StreamReader reader = new StreamReader(webResponse.GetResponseStream(), Encoding.UTF8))
+            {
+                return reader.ReadToEnd();
             }
         }
 
