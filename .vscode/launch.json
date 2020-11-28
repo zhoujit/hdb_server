@@ -26,7 +26,7 @@
             "WARNING16": "button at the bottom of this file.",
             "WARNING17": "*********************************************************************************",
             "preLaunchTask": "build",
-            "program": "${workspaceFolder}/HDBCLI/bin/Debug/netcoreapp3.1/HDBCLI.dll",
+            "program": "${workspaceFolder}/HDBCLI/bin/Debug/net5.0/HDBCLI.dll",
             "args": ["-hostname", "192.168.56.1", "-port", "9898"],
             "cwd": "${workspaceFolder}",
             "console": "integratedTerminal",
