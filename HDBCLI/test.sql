@@ -1,3 +1,5 @@
+-- HDBCLI/bin/Debug/net5.0/HDBCLI -hostname 127.0.0.1 -port 9898
+
 create table Issuers
 (
     Id varchar pk lz4,
