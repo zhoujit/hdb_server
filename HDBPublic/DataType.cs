@@ -13,6 +13,8 @@ namespace HDBPublic
         Long,
         Float,
         Double,
+        Date,
+        DateTime,
     }
 
     class DataTypeHelper
@@ -38,6 +40,8 @@ namespace HDBPublic
             {"Long", DataType.Long},
             {"Float", DataType.Float},
             {"Double", DataType.Double},
+            {"Date", DataType.Date},
+            {"DateTime", DataType.DateTime},
         };
     }
 }
