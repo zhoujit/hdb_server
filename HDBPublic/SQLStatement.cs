@@ -37,12 +37,14 @@
                 {
                     string tableName = match.Groups["TableName"].Value.Trim();
                     string whereStatement = match.Groups["Where"].Value.Trim();
+                    string groupByStatement = match.Groups["GroupByList"].Value.Trim();
+                    string aggregateStatement = match.Groups["AggregateList"].Value.Trim();
                     string limitString = "";
-                    if (match.Groups["Limit"]?.Value != null && match.Groups["Limit"].Value.Length > 0)
+                    if (match.Groups["Limit"].Success)
                     {
                         limitString = match.Groups["Limit"].Value;
                     }
-                    if (match.Groups["TopN"]?.Value != null && match.Groups["TopN"].Value.Length > 0)
+                    else if (match.Groups["TopN"].Success)
                     {
                         limitString = match.Groups["TopN"].Value;
                     }
@@ -63,10 +65,13 @@
                         }
                     }
 
-                    List<Dictionary<string, Tuple<Object, PredicateType>>> fieldConditions = ParseWhereStatement(whereStatement);
+                    var fieldConditions = ParseWhereStatement(whereStatement);
+                    var aggregateInfos = ParseAggregateStatement(aggregateStatement);
+                    var groupBys = groupByStatement.Split(new char[] { ',' }, StringSplitOptions.RemoveEmptyEntries);
+                    QueryInfo queryInfo = new QueryInfo(tableName, fieldConditions, limit, aggregateInfos, groupBys);
 
                     stepTime.Start();
-                    result = m_dbClient.Query(tableName, fieldConditions, limit);
+                    result = m_dbClient.Query(queryInfo);
                     stepTime.Stop();
 
                     message = string.Format("Returned {0} record(s). Elapsed:{1}s\n", result.Rows.Count, stepTime.Elapsed.TotalSeconds.ToString("0.###"));
@@ -97,8 +102,9 @@ select * from t1 where f1 = 100;
                     success = FillFieldValue(fieldNameList, fieldValueList, fieldConditions, out message);
                     if (success)
                     {
+                        QueryInfo queryInfo = new QueryInfo(tableName, fieldConditions, null, null, null);
                         stepTime.Start();
-                        m_dbClient.Add(tableName, fieldConditions);
+                        m_dbClient.Add(queryInfo);
                         stepTime.Stop();
 
                         message = string.Format("Succeed to append record(s). Elapsed:{0}s", stepTime.Elapsed.TotalSeconds.ToString("0.###"));
@@ -119,9 +125,10 @@ select * from t1 where f1 = 100;
                     string whereStatement = match.Groups["Where"].Value.Trim();
 
                     List<Dictionary<string, Tuple<Object, PredicateType>>> fieldConditions = ParseWhereStatement(whereStatement);
+                    QueryInfo queryInfo = new QueryInfo(tableName, fieldConditions, null, null, null);
 
                     stepTime.Start();
-                    m_dbClient.Delete(tableName, fieldConditions);
+                    m_dbClient.Delete(queryInfo);
                     stepTime.Stop();
 
                     message = string.Format("Succeed to remove record(s). Elapsed:{0}s", stepTime.Elapsed.TotalSeconds.ToString("0.###"));
@@ -315,6 +322,25 @@ select * from t1 where f1 = 100;
                 return (false, "Unidentified SQL:\n" + sql, null);
             }
             return (success, message, result);
+        }
+
+        private List<AggregateInfo> ParseAggregateStatement(string aggregateStatement)
+        {
+            List<AggregateInfo> result = new List<AggregateInfo>();
+            foreach (string aggregateLine in aggregateStatement.Split(',', StringSplitOptions.RemoveEmptyEntries))
+            {
+                string temp = aggregateLine.Trim();
+                Match match = AggregateLineRegex.Match(temp);
+                if (!match.Success)
+                {
+                    throw new ArgumentException($"Invalid aggregate function:{temp}.");
+                }
+                string fieldName = match.Groups["FieldName"].Value;
+                string asName = match.Groups["AsName"].Value;
+                string aggregateType = match.Groups["AggregateType"].Value;
+                result.Add(new AggregateInfo(fieldName, asName, aggregateType));
+            }
+            return result;
         }
 
         private List<Dictionary<string, Tuple<Object, PredicateType>>> ParseWhereStatement(string whereStatement)
@@ -701,21 +727,27 @@ select * from t1 where f1 = 100;
 
         private readonly static string TableNamePattern = @"(?<TableName>[0-9A-Za-z]+)";
         private readonly static string FieldNamePattern = @"(?<FieldName>[0-9A-Za-z]+)";
+        private readonly static string AsNamePattern = @"(?<AsName>[0-9A-Za-z]+)";
         private readonly static string DataTypePattern = @"(?<DataType>(Char)|(Varchar)|(Byte)|(Short)|(Int)|(Long)|(Float)|(Double))";
-        private readonly static string WherePattern = @"(?<Where>.+)";
+        private readonly static string WherePattern = @"(?<Where>.+?)";
         private readonly static string ShowPattern = @"show\s+(?<ShowValue>.+)";
         private readonly static string FileNamePattern = @"(?<FileName>[0-9A-Za-z.-_]+)";
         private readonly static string LogFileNamePattern = @"(?<LogFileName>[0-9A-Za-z.-_]+)";
 
         private readonly static string TopNPattern = @"top\s+(?<TopN>\d{1,10})";
         private readonly static string LimitPattern = @"limit\s+(?<Limit>\d{1,10})";
+        private readonly static string GroupByListPattern = @"(?<GroupByList>[0-9A-Za-z,]{1,300})";
+        private readonly static string AggregateListPattern = @"(?<AggregateList>.+)";
+        private readonly static string AggregateType = @"(?<AggregateType>(count)|(avg)|(sum)|(min)|(max))";
+        private readonly static string AggregateLine = string.Format(@"{0}\s*\(\s*{1}\s*\)\s+as\s+{2}", AggregateType, FieldNamePattern, AsNamePattern);
 
-        private readonly static string SelectPattern = string.Format(@"select\s+\*\s+from\s+{0}\s+where\s+{1}",
-            TableNamePattern, WherePattern);
-        private readonly static string SelectPattern2 = string.Format(@"select\s+{2}\s+\*\s+from\s+{0}\s+where\s+{1}",
-            TableNamePattern, WherePattern, TopNPattern);
-        private readonly static string SelectPattern3 = string.Format(@"select\s+\*\s+from\s+{0}\s+where\s+{1}\s+{2}",
-            TableNamePattern, WherePattern, LimitPattern);
+        private readonly static string Optional = @"{0,1}";
+
+        private readonly static Regex AggregateLineRegex = new Regex(AggregateLine, RegexOptions.Singleline | RegexOptions.IgnoreCase);
+
+        private readonly static string SelectPattern = string.Format(
+            @"^\s*select(\s+{1}){0}\s+((\*)|{6})\s+from\s+{2}\s+where\s+{3}(\s+{4}){0}(\s+group\s+by\s+{5}){0}\s*$",
+            Optional, TopNPattern, TableNamePattern, WherePattern, LimitPattern, GroupByListPattern, AggregateListPattern);
 
         private readonly static string InsertPattern = string.Format(@"insert\s+into\s+{0}\s*\(\s*(?<FieldNameList>.+)\s*\)\s+values\s*\((?<FieldValueList>.+)\s*\)",
             TableNamePattern);
@@ -735,9 +767,7 @@ select * from t1 where f1 = 100;
 
 
         private readonly static Regex[] SelectRegexes = {
-            new Regex(SelectPattern2, RegexOptions.Singleline | RegexOptions.IgnoreCase),
-            new Regex(SelectPattern3, RegexOptions.Singleline | RegexOptions.IgnoreCase),
-            new Regex(SelectPattern, RegexOptions.Singleline | RegexOptions.IgnoreCase)
+            new Regex(SelectPattern, RegexOptions.Singleline | RegexOptions.IgnoreCase | RegexOptions.ExplicitCapture)
         };
         private readonly static Regex InsertRegex = new Regex(InsertPattern, RegexOptions.Singleline | RegexOptions.IgnoreCase);
         private readonly static Regex DeleteRegex = new Regex(DeletePattern, RegexOptions.Singleline | RegexOptions.IgnoreCase);

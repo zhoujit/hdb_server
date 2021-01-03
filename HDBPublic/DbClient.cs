@@ -27,25 +27,25 @@ namespace HDBPublic
             m_requestClient = new RequestClient(hostName, port);
         }
 
-        public void Add(string tableName, List<Dictionary<string, Tuple<Object, PredicateType>>> fieldConditions)
+        public void Add(QueryInfo queryInfo)
         {
-            RequestData(OpType.Add, tableName, fieldConditions, null);
+            RequestData(OpType.Add, queryInfo);
         }
 
-        public void Update(string tableName, List<Dictionary<string, Tuple<Object, PredicateType>>> fieldConditions)
+        public void Update(QueryInfo queryInfo)
         {
-            RequestData(OpType.Update, tableName, fieldConditions, null);
+            RequestData(OpType.Update, queryInfo);
         }
 
-        public void Delete(string tableName, List<Dictionary<string, Tuple<Object, PredicateType>>> fieldConditions)
+        public void Delete(QueryInfo queryInfo)
         {
-            RequestData(OpType.Del, tableName, fieldConditions, null);
+            RequestData(OpType.Del, queryInfo);
         }
 
-        public DataTable Query(string tableName, List<Dictionary<string, Tuple<Object, PredicateType>>> fieldConditions, int? limit = null)
+        public DataTable Query(QueryInfo queryInfo)
         {
             DataTable result = new DataTable();
-            List<string> responseResult = RequestData(OpType.Get, tableName, fieldConditions, limit);
+            List<string> responseResult = RequestData(OpType.Get, queryInfo);
             foreach (string responseText in responseResult)
             {
                 XmlDocument doc = new XmlDocument();
@@ -116,7 +116,7 @@ namespace HDBPublic
         public DataTable GetTableList()
         {
             // <Msg Op='GetTableList'></Msg>
-            string responseText = RequestData(OpType.GetTableList, null);
+            string responseText = RequestTableOp(OpType.GetTableList, null);
 
             /*
             <Result Status="1" StatusText="OK">
@@ -157,7 +157,7 @@ namespace HDBPublic
         public string RemoveTable(string tableName)
         {
             // <Msg Op='RemoveTable' Table='Issuers2'></Msg>
-            return RequestData(OpType.RemoveTable, tableName);
+            return RequestTableOp(OpType.RemoveTable, tableName);
         }
 
         public string ServerImportTable(string tableName, string fileName, string logFileName)
@@ -169,7 +169,7 @@ namespace HDBPublic
         public string TruncateTable(string tableName)
         {
             // <Msg Op='TruncateTable' Table='Issuers2'></Msg>
-            return RequestData(OpType.TruncateTable, tableName);
+            return RequestTableOp(OpType.TruncateTable, tableName);
         }
 
         public void CreateTable(string tableName, List<ColumnDefinition> columnDefinitions)
@@ -217,7 +217,7 @@ namespace HDBPublic
             }
         }
 
-        private string RequestData(OpType op, string tableName)
+        private string RequestTableOp(OpType op, string tableName)
         {
             XmlDocument doc = new XmlDocument();
             doc.LoadXml("<Msg></Msg>");
@@ -277,27 +277,27 @@ namespace HDBPublic
             return "";
         }
 
-        public List<string> RequestData(OpType op, string tableName, List<Dictionary<string, Tuple<Object, PredicateType>>> fieldConditions, int? limit = null)
+        public List<string> RequestData(OpType op, QueryInfo queryInfo)
         {
             XmlDocument doc = new XmlDocument();
             doc.LoadXml("<Msg></Msg>");
             XmlNode msgNode = doc.SelectSingleNode("/Msg");
             XmlHelper.AddAttribute(msgNode, "Op", op.ToString());
-            if (!string.IsNullOrEmpty(tableName))
+            if (!string.IsNullOrEmpty(queryInfo.TableName))
             {
-                XmlHelper.AddAttribute(msgNode, "Table", tableName);
+                XmlHelper.AddAttribute(msgNode, "Table", queryInfo.TableName);
             }
-            if (limit != null)
+            if (queryInfo.Limit != null)
             {
-                XmlHelper.AddAttribute(msgNode, "Limit", limit.Value.ToString("0"));
+                XmlHelper.AddAttribute(msgNode, "Limit", queryInfo.Limit.Value.ToString("0"));
             }
 
             List<string> result = new List<string>();
             const int ProgressCount = 10000;
             const int MaxBatchCount = 2000;
             int currentCount = 0;
-            int totalCount = fieldConditions.Count;
-            foreach (Dictionary<string, Tuple<Object, PredicateType>> fieldValueMap in fieldConditions)
+            int totalCount = queryInfo.FieldConditions.Count;
+            foreach (Dictionary<string, Tuple<Object, PredicateType>> fieldValueMap in queryInfo.FieldConditions)
             {
                 currentCount++;
                 if (fieldValueMap != null)
@@ -320,6 +320,7 @@ namespace HDBPublic
 
                 if (currentCount % MaxBatchCount == 0 || currentCount == totalCount)
                 {
+                    AttachGroupBy(doc, queryInfo);
                     string responseXml = SendRequest(RequestType.Request, doc.OuterXml);
                     XmlDocument docResponse = new XmlDocument();
                     docResponse.LoadXml(responseXml);
@@ -343,15 +344,46 @@ namespace HDBPublic
                     doc.LoadXml("<Msg></Msg>");
                     msgNode = doc.SelectSingleNode("/Msg");
                     XmlHelper.AddAttribute(msgNode, "Op", OpType.Add.ToString());
-                    if (!string.IsNullOrEmpty(tableName))
+                    if (!string.IsNullOrEmpty(queryInfo.TableName))
                     {
-                        XmlHelper.AddAttribute(msgNode, "Table", tableName);
+                        XmlHelper.AddAttribute(msgNode, "Table", queryInfo.TableName);
                     }
 
                     result.Add(responseXml);
                 }
             }
             return result;
+        }
+
+        private void AttachGroupBy(XmlDocument doc, QueryInfo queryInfo)
+        {
+            /*
+            <Group By='Name'>
+                <Column Name='Id' As='IdCount' AggregateType='count'></Column>
+                <Column Name='Price' As='PriceAvg' AggregateType='avg'></Column>
+                <Column Name='Price' As='PriceSum' AggregateType='sum'></Column>
+            </Group>
+            */
+            if (queryInfo.AggregateInfos?.Count > 0 && queryInfo.GroupBys?.Length > 0)
+            {
+                XmlNode msgNode = doc.SelectSingleNode("/Msg");
+                if (msgNode != null)
+                {
+                    var groupNode = doc.CreateElement("Group");
+                    XmlHelper.AddAttribute(groupNode, "By", string.Join(",", queryInfo.GroupBys));
+                    foreach (var aggregateInfo in queryInfo.AggregateInfos)
+                    {
+                        var columnNode = doc.CreateElement("Column");
+                        XmlHelper.AddAttribute(columnNode, "Name", aggregateInfo.FieldName);
+                        XmlHelper.AddAttribute(columnNode, "As", aggregateInfo.AsName);
+                        XmlHelper.AddAttribute(columnNode, "AggregateType", aggregateInfo.AggregateType);
+
+                        groupNode.AppendChild(columnNode);
+                    }
+
+                    msgNode.AppendChild(groupNode);
+                }
+            }
         }
 
         private string SendRequest(RequestType requestType, string requestText, bool noNeedReturn = false)

@@ -48,8 +48,8 @@ select * from Issuers where Id>'B19909' and Name <='BATCH_10088';
 select * from Issuers where Id>'B19909' and Name like 'BATCH_10088%';
 
 
-select count(Id) as IdCount, avg(Price) as PriceAvg, sum(Price) as PriceSum, max(Id) as MaxId, min(Id) as MinId
-from Issuers where Id='S001' or Id='S002' or Id='S003' group by Name;
+select top 8 count(Id) as IdCount, avg(Price) as PriceAvg, sum(Price) as PriceSum, max(Id) as MaxId, min(Id) as MinId
+from Issuers where Id='S001' or Id='S002' or Id='S003' limit 9 group by Name;
 
 
 delete from Issuers where Id='S2020';

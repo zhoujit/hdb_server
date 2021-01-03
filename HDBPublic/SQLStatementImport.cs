@@ -79,7 +79,8 @@ namespace HDBPublic
 
                                 if (fieldConditions.Count % 10000 == 0)
                                 {
-                                    m_dbClient.Add(tableName, fieldConditions);
+                                    QueryInfo queryInfo = new QueryInfo(tableName, fieldConditions, null, null, null);
+                                    m_dbClient.Add(queryInfo);
                                     fieldConditions.Clear();
                                 }
                                 if (currentTotalCount % 100000 == 0)
@@ -110,7 +111,8 @@ namespace HDBPublic
 
             if (fieldConditions.Count > 0)
             {
-                m_dbClient.Add(tableName, fieldConditions);
+                QueryInfo queryInfo = new QueryInfo(tableName, fieldConditions, null, null, null);
+                m_dbClient.Add(queryInfo);
                 fieldConditions.Clear();
             }
             ImpProgress?.Invoke(null, new ImpProgressEventArgs(grandTotalCount, currentTotalCount, false));
