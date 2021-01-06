@@ -728,7 +728,6 @@ select * from t1 where f1 = 100;
         private readonly static string TableNamePattern = @"(?<TableName>[0-9A-Za-z]+)";
         private readonly static string FieldNamePattern = @"(?<FieldName>[0-9A-Za-z]+)";
         private readonly static string AsNamePattern = @"(?<AsName>[0-9A-Za-z]+)";
-        private readonly static string DataTypePattern = @"(?<DataType>(Char)|(Varchar)|(Byte)|(Short)|(Int)|(Long)|(Float)|(Double))";
         private readonly static string WherePattern = @"(?<Where>.+?)";
         private readonly static string ShowPattern = @"show\s+(?<ShowValue>.+)";
         private readonly static string FileNamePattern = @"(?<FileName>[0-9A-Za-z.-_]+)";
@@ -778,7 +777,6 @@ select * from t1 where f1 = 100;
 
         private readonly static Regex CreateTableRegex = new Regex(CreateTablePattern, RegexOptions.Singleline | RegexOptions.IgnoreCase);
         private readonly static Regex FieldNameRegex = new Regex("^" + FieldNamePattern + "$", RegexOptions.Singleline | RegexOptions.IgnoreCase);
-        private readonly static Regex DataTypeRegex = new Regex("^" + DataTypePattern + "$", RegexOptions.Singleline | RegexOptions.IgnoreCase);
         private readonly static Regex ShowRegex = new Regex("^" + ShowPattern + "$", RegexOptions.Singleline | RegexOptions.IgnoreCase);
 
     }
