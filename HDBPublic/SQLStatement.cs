@@ -74,18 +74,18 @@
                     result = m_dbClient.Query(queryInfo);
                     stepTime.Stop();
 
-                    message = string.Format("Returned {0} record(s). Elapsed:{1}s\n", result.Rows.Count, stepTime.Elapsed.TotalSeconds.ToString("0.###"));
+                    message = $"Returned {result.Rows.Count} record(s). Elapsed:{stepTime.Elapsed.TotalSeconds.ToString("0.##")}s\n";
                 }
                 else
                 {
-                    message = string.Format(@"Invalid select statement:{0}
+                    message = $@"Invalid select statement:{sql}
 Memo:
 1. Select statement must contains where clause, and field list must be *
 2. Two consecutive single-quotes in string, which are treated as a literal single-quote
 
 Example:
 select * from t1 where f1 = 100;
-", sql);
+";
                 }
             }
             else if (sql.StartsWith("insert", StringComparison.CurrentCultureIgnoreCase))
@@ -107,12 +107,12 @@ select * from t1 where f1 = 100;
                         m_dbClient.Add(queryInfo);
                         stepTime.Stop();
 
-                        message = string.Format("Succeed to append record(s). Elapsed:{0}s", stepTime.Elapsed.TotalSeconds.ToString("0.###"));
+                        message = $"Succeed to append record(s). Elapsed:{stepTime.Elapsed.TotalSeconds.ToString("0.##")}s";
                     }
                 }
                 else
                 {
-                    message = string.Format(@"Invalid select statement:{0}", sql);
+                    message = $"Invalid select statement:{sql}";
                 }
             }
             else if (sql.StartsWith("delete", StringComparison.CurrentCultureIgnoreCase))
@@ -131,11 +131,11 @@ select * from t1 where f1 = 100;
                     m_dbClient.Delete(queryInfo);
                     stepTime.Stop();
 
-                    message = string.Format("Succeed to remove record(s). Elapsed:{0}s", stepTime.Elapsed.TotalSeconds.ToString("0.###"));
+                    message = $"Succeed to remove record(s). Elapsed:{stepTime.Elapsed.TotalSeconds.ToString("0.##")}s";
                 }
                 else
                 {
-                    message = string.Format(@"Invalid delete statement:{0}", sql);
+                    message = $"Invalid delete statement:{sql}";
                 }
             }
             else if (sql.StartsWith("drop", StringComparison.CurrentCultureIgnoreCase))
@@ -148,11 +148,11 @@ select * from t1 where f1 = 100;
                     stepTime.Start();
                     m_dbClient.RemoveTable(tableName);
                     stepTime.Stop();
-                    message = string.Format("Succeed to drop table. Elapsed:{0}s", stepTime.Elapsed.TotalSeconds.ToString("0.###"));
+                    message = $"Succeed to drop table. Elapsed:{stepTime.Elapsed.TotalSeconds.ToString("0.##")}s";
                 }
                 else
                 {
-                    message = string.Format(@"Invalid drop table statement:{0}", sql);
+                    message = $"Invalid drop table statement:{sql}";
                 }
             }
             else if (sql.StartsWith("truncate", StringComparison.CurrentCultureIgnoreCase))
@@ -165,11 +165,11 @@ select * from t1 where f1 = 100;
                     stepTime.Start();
                     m_dbClient.TruncateTable(tableName);
                     stepTime.Stop();
-                    message = string.Format("Succeed to truncate table. Elapsed:{0}s", stepTime.Elapsed.TotalSeconds.ToString("0.###"));
+                    message = $"Succeed to truncate table. Elapsed:{stepTime.Elapsed.TotalSeconds.ToString("0.##")}s";
                 }
                 else
                 {
-                    message = string.Format(@"Invalid truncate table statement:{0}", sql);
+                    message = $"Invalid truncate table statement:{sql}";
                 }
             }
             else if (sql.StartsWith("create", StringComparison.CurrentCultureIgnoreCase))
@@ -212,14 +212,14 @@ select * from t1 where f1 = 100;
                             if (!FieldNameRegex.Match(fieldName).Success)
                             {
                                 success = false;
-                                message = string.Format($"Invalid field name: {fieldName}");
+                                message = $"Invalid field name: {fieldName}";
                                 break;
                             }
                             DataType dataType;
                             if (!DataTypeHelper.TryParse(dataTypeString, out dataType))
                             {
                                 success = false;
-                                message = string.Format($"Invalid data type: {dataTypeString}");
+                                message = $"Invalid data type: {dataTypeString}";
                                 break;
                             }
                             ColumnDefinition columnDefinition = new ColumnDefinition(fieldName, dataType, pk, compressType);
@@ -228,7 +228,7 @@ select * from t1 where f1 = 100;
                         else
                         {
                             success = false;
-                            message = string.Format($"Invalid column definition: {fieldDef}");
+                            message = $"Invalid column definition: {fieldDef}";
                             break;
                         }
                     }
@@ -238,12 +238,12 @@ select * from t1 where f1 = 100;
                         stepTime.Start();
                         m_dbClient.CreateTable(tableName, columnDefinitions);
                         stepTime.Stop();
-                        message = string.Format("Succeed to create table. Elapsed:{0}s", stepTime.Elapsed.TotalSeconds.ToString("0.###"));
+                        message = $"Succeed to create table. Elapsed:{stepTime.Elapsed.TotalSeconds.ToString("0.##")}s";
                     }
                 }
                 else
                 {
-                    message = string.Format(@"Invalid create table statement:{0}", sql);
+                    message = $"Invalid create table statement:{sql}";
                 }
             }
             else if (sql.StartsWith("show", StringComparison.CurrentCultureIgnoreCase))
@@ -262,12 +262,12 @@ select * from t1 where f1 = 100;
                     else
                     {
                         success = false;
-                        message = string.Format($"Undefined show clause: {showValue}");
+                        message = $"Undefined show clause: {showValue}";
                     }
                 }
                 else
                 {
-                    message = string.Format(@"Invalid show statement:{0}", sql);
+                    message = $"Invalid show statement:{sql}";
                 }
             }
             else if (sql.StartsWith("imp", StringComparison.CurrentCultureIgnoreCase))
@@ -281,11 +281,11 @@ select * from t1 where f1 = 100;
                     stepTime.Start();
                     ImportTable(tableName, fileName);
                     stepTime.Stop();
-                    message = string.Format("Succeed to import data. Elapsed:{0}s", stepTime.Elapsed.TotalSeconds.ToString("0.###"));
+                    message = $"Succeed to import data. Elapsed:{stepTime.Elapsed.TotalSeconds.ToString("0.##")}s";
                 }
                 else
                 {
-                    message = string.Format(@"Invalid imp statement:{0}", sql);
+                    message = $"Invalid imp statement:{sql}";
                 }
             }
             else if (sql.StartsWith("server", StringComparison.CurrentCultureIgnoreCase))
@@ -304,7 +304,7 @@ select * from t1 where f1 = 100;
                 }
                 else
                 {
-                    message = string.Format(@"Invalid imp statement:{0}", sql);
+                    message = $"Invalid imp statement:{sql}";
                 }
             }
             else if (string.Compare(sql, "stop", true) == 0)
@@ -371,7 +371,7 @@ select * from t1 where f1 = 100;
 
                         if (c == '=')
                         {
-                            throw new Exception(string.Format("Field name cannot be empty."));
+                            throw new Exception("Field name cannot be empty.");
                         }
                         continue;
                     }
@@ -576,7 +576,7 @@ select * from t1 where f1 = 100;
 
                     if (result && fieldNames.Length != fieldValues.Count)
                     {
-                        errorMessage = string.Format("Mismatched between field name and value list.\n{0}\n{1}", fieldNameList, fieldValueList);
+                        errorMessage = $"Mismatched between field name and value list.\n{fieldNameList}\n{fieldValueList}";
                         result = false;
                     }
 
@@ -636,7 +636,7 @@ select * from t1 where f1 = 100;
                                 }
                                 if (line[j] != Space)
                                 {
-                                    throw new FormatException("Invalid field value list" + line);
+                                    throw new FormatException("Invalid field value list:" + line);
                                 }
                             }
                         }
@@ -645,7 +645,7 @@ select * from t1 where f1 = 100;
                     {
                         if (!canSkipSpace)
                         {
-                            string errorMsg = string.Format("Single quotation should be escaped. Position index:{0}, field value list: {1}", currentIndex, line);
+                            string errorMsg = $"Single quotation should be escaped. Position index:{currentIndex}, field value list: {line}";
                             throw new FormatException(errorMsg);
                         }
                         escaped = true;

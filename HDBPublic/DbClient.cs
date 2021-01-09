@@ -212,8 +212,8 @@ namespace HDBPublic
             }
             if (statusNode.InnerText != "1")
             {
-                throw new ApplicationException(string.Format("Request failed: {0}",
-                    docResponse.SelectSingleNode("/Result/@StatusText").InnerText));
+                string statusText = docResponse.SelectSingleNode("/Result/@StatusText").InnerText;
+                throw new ApplicationException($"Request failed: {statusText}");
             }
         }
 
@@ -238,8 +238,8 @@ namespace HDBPublic
             }
             if (statusNode.InnerText != "1")
             {
-                throw new ApplicationException(string.Format("Request failed: {0}",
-                    docResponse.SelectSingleNode("/Result/@StatusText").InnerText));
+                string statusText = docResponse.SelectSingleNode("/Result/@StatusText").InnerText;
+                throw new ApplicationException($"Request failed: {statusText}");
             }
 
             return responseXml;
@@ -270,8 +270,8 @@ namespace HDBPublic
                 }
                 if (statusNode.InnerText != "1")
                 {
-                    throw new ApplicationException(string.Format("Request failed: {0}",
-                        docResponse.SelectSingleNode("/Result/@StatusText").InnerText));
+                    string statusText = docResponse.SelectSingleNode("/Result/@StatusText").InnerText;
+                    throw new ApplicationException($"Request failed: {statusText}");
                 }
             }
             return "";
@@ -331,8 +331,8 @@ namespace HDBPublic
                     }
                     if (statusNode.InnerText != "1")
                     {
-                        throw new ApplicationException(string.Format("Request failed: {0}",
-                            docResponse.SelectSingleNode("/Result/@StatusText").InnerText));
+                        string statusText = docResponse.SelectSingleNode("/Result/@StatusText").InnerText;
+                        throw new ApplicationException($"Request failed: {statusText}");
                     }
 
                     if (currentCount % ProgressCount == 0)
@@ -410,7 +410,7 @@ namespace HDBPublic
             }
             else if (obj is float || obj is double || obj is decimal)
             {
-                val = Convert.ToDouble(obj).ToString("0.#####");
+                val = Convert.ToDouble(obj).ToString("0.##########");
             }
             else if (obj is byte || obj is Int16 || obj is Int32)
             {
@@ -426,7 +426,7 @@ namespace HDBPublic
             }
             else
             {
-                throw new NotSupportedException(string.Format("Cannot support this data type: {0}", obj.GetType().FullName));
+                throw new NotSupportedException($"Cannot support this data type: {obj.GetType().FullName}");
             }
 
             return val;

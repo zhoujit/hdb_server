@@ -28,8 +28,9 @@ namespace HDBCLI
                 Console.WriteLine(message);
             }
             else
-
+            {
                 Console.Write(message);
+            }
         }
 
         private static readonly ConsoleColor ErrorOutputColor = ConsoleColor.DarkRed;
