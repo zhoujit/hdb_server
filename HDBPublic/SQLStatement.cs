@@ -728,7 +728,8 @@ select * from t1 where f1 = 100;
         private readonly static string TableNamePattern = @"(?<TableName>[0-9A-Za-z]+)";
         private readonly static string FieldNamePattern = @"(?<FieldName>[0-9A-Za-z]+)";
         private readonly static string AsNamePattern = @"(?<AsName>[0-9A-Za-z]+)";
-        private readonly static string WherePattern = @"(?<Where>.+?)";
+        private readonly static string SelectWherePattern = @"(?<Where>.+?)";
+        private readonly static string DeleteWherePattern = @"(?<Where>.+)";
         private readonly static string ShowPattern = @"show\s+(?<ShowValue>.+)";
         private readonly static string FileNamePattern = @"(?<FileName>[0-9A-Za-z.-_]+)";
         private readonly static string LogFileNamePattern = @"(?<LogFileName>[0-9A-Za-z.-_]+)";
@@ -746,13 +747,13 @@ select * from t1 where f1 = 100;
 
         private readonly static string SelectPattern = string.Format(
             @"^\s*select(\s+{1}){0}\s+((\*)|{6})\s+from\s+{2}\s+where\s+{3}(\s+{4}){0}(\s+group\s+by\s+{5}){0}\s*$",
-            Optional, TopNPattern, TableNamePattern, WherePattern, LimitPattern, GroupByListPattern, AggregateListPattern);
+            Optional, TopNPattern, TableNamePattern, SelectWherePattern, LimitPattern, GroupByListPattern, AggregateListPattern);
 
         private readonly static string InsertPattern = string.Format(@"insert\s+into\s+{0}\s*\(\s*(?<FieldNameList>.+)\s*\)\s+values\s*\((?<FieldValueList>.+)\s*\)",
             TableNamePattern);
 
         private readonly static string DeletePattern = string.Format(@"delete\s+from\s+{0}\s+where\s+{1}",
-            TableNamePattern, WherePattern);
+            TableNamePattern, DeleteWherePattern);
 
         private readonly static string DropTablePattern = string.Format(@"drop\s+table\s+{0}", TableNamePattern);
 

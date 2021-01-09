@@ -40,7 +40,7 @@ namespace HDBCLI
                     continue;
                 }
                 line = line.TrimEnd();
-                inputBuffer.AppendFormat($"\n{line}");
+                inputBuffer.AppendFormat("\n{0}", line);
                 if (line.EndsWith(";"))
                 {
                     try
