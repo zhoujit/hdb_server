@@ -55,18 +55,26 @@
                     reqStream.Write(bytes, 0, bytes.Length);
                 }
             }
-
-            using (HttpWebResponse webResponse = (HttpWebResponse)webRequest.GetResponse())
-            using (Stream stream = webResponse.GetResponseStream())
+            if (noNeedReturn)
             {
-                if (noNeedReturn)
-                {
-                    return "";
-                }
+                webRequest.Timeout = 1000 * 2;
+            }
+            try
+            {
+                using (HttpWebResponse webResponse = (HttpWebResponse)webRequest.GetResponse())
+                using (Stream stream = webResponse.GetResponseStream())
                 using (StreamReader reader = new StreamReader(stream, Encoding.UTF8))
                 {
                     return reader.ReadToEnd();
                 }
+            }
+            catch (WebException ex)
+            {
+                if (ex.Status == WebExceptionStatus.Timeout && noNeedReturn)
+                {
+                    return "";
+                }
+                throw;
             }
         }
 
