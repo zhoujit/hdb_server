@@ -117,18 +117,6 @@
 
     }
 
-    class DataLineReadyEventArgs : EventArgs
-    {
-        public StringBuilder DataBlock { set; get; }
-        public bool IsHeader { set; get; }
-        public bool HasNext { set; get; }
-
-        public DataLineReadyEventArgs(StringBuilder dataBlock, bool isHeader, bool hasNext)
-        {
-            DataBlock = dataBlock;
-            IsHeader = isHeader;
-            HasNext = hasNext;
-        }
-    }
+    record DataLineReadyEventArgs(StringBuilder DataBlock, bool IsHeader, bool HasNext);
 
 }

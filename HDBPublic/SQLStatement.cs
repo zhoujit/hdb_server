@@ -297,9 +297,7 @@ select * from t1 where f1 = 100;
                     string tableName = match.Groups["TableName"].Value.Trim();
                     string fileName = match.Groups["FileName"].Value.Trim();
                     string logFileName = match.Groups["LogFileName"].Value.Trim();
-                    stepTime.Start();
                     m_dbClient.ServerImportTable(tableName, fileName, logFileName);
-                    stepTime.Stop();
                     message = "It is running in backend. Please check log file in the server.";
                 }
                 else

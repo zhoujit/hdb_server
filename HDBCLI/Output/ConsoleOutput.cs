@@ -1,7 +1,6 @@
 namespace HDBCLI
 {
     using System;
-    using System.IO;
 
     class ConsoleOutput : TextOutput
     {

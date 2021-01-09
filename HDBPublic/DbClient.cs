@@ -434,38 +434,10 @@ namespace HDBPublic
 
     }
 
-    class BeforeRequestArgs : EventArgs
-    {
-        public readonly string RequestText;
+    record BeforeRequestArgs(string RequestText);
 
-        public BeforeRequestArgs(string requestText)
-        {
-            this.RequestText = requestText;
-        }
-    }
+    record AfterResponseArgs(string RequestText, string ResponseText);
 
-    class AfterResponseArgs : EventArgs
-    {
-        public readonly string RequestText;
-        public readonly string ResponseText;
-
-        public AfterResponseArgs(string requestText, string responseText)
-        {
-            this.RequestText = requestText;
-            this.ResponseText = responseText;
-        }
-    }
-
-    class RequestProgressArgs : EventArgs
-    {
-        public readonly int TotalCount;
-        public readonly int CompleteCount;
-
-        public RequestProgressArgs(int totalCount, int completeCount)
-        {
-            this.TotalCount = totalCount;
-            this.CompleteCount = completeCount;
-        }
-    }
+    record RequestProgressArgs(int TotalCount, int CompleteCount);
 
 }
