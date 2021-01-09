@@ -27,7 +27,7 @@ namespace HDBPublic
                     int totalAvailableSize = readedCount + offset;
                     string text = new string(buffer, 0, totalAvailableSize);
 
-                    int lineEndIndex = text.IndexOf(lineSeparator);
+                    int lineEndIndex = text.IndexOf(lineSeparator, StringComparison.Ordinal);
                     if (lineEndIndex < 0)
                     {
                         if (reader.Peek() == -1)
@@ -44,7 +44,7 @@ namespace HDBPublic
                     int startIndex = 0;
                     while (lineEndIndex >= 0)
                     {
-                        string line = new string(buffer, startIndex, lineEndIndex - startIndex).TrimEnd(new char[] { '\r', '\n' });
+                        string line = new string(buffer, startIndex, lineEndIndex - startIndex).Trim(new char[] { '\r', '\n' });
                         startIndex = lineEndIndex + lineSeparator.Length;
                         if (columns.Count == 0)
                         {
@@ -96,7 +96,7 @@ namespace HDBPublic
                         }
                         else
                         {
-                            lineEndIndex = text.IndexOf(lineSeparator, lineEndIndex + 1);
+                            lineEndIndex = text.IndexOf(lineSeparator, lineEndIndex + 1, StringComparison.Ordinal);
                         }
                     }
 
