@@ -352,6 +352,10 @@ select * from t1 where f1 = 100;
                     {
                         throw new ArgumentException($"Invalid aggregate function:{temp}.");
                     }
+                    string fieldName = match.Groups["FieldName"].Value;
+                    string asName = match.Groups["AsName"].Value;
+                    string aggregateType = match.Groups["AggregateType"].Value;
+                    aggregateInfos.Add(new AggregateInfo(fieldName, asName, aggregateType));
                 }
                 else
                 {
@@ -374,10 +378,6 @@ select * from t1 where f1 = 100;
                         fieldInfos.Add(new FieldInfo(temp, temp));
                     }
                 }
-                string fieldName = match.Groups["FieldName"].Value;
-                string asName = match.Groups["AsName"].Value;
-                string aggregateType = match.Groups["AggregateType"].Value;
-                aggregateInfos.Add(new AggregateInfo(fieldName, asName, aggregateType));
             }
             return new Tuple<List<AggregateInfo>, List<FieldInfo>>(aggregateInfos, fieldInfos);
         }
