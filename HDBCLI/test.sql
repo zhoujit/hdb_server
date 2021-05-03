@@ -14,6 +14,14 @@ create table Issuers2
     LastUpdate datetime lz4,
 );
 
+select Id,Price from Issuers2 where Id = 'S0000000001';
+
+select * from Issuers2 where Id = 'S0000000001';
+select * from Issuers2 where Id = 'S0000009397';
+select * from Issuers2 where Id >= 'S0000009398';
+select * from Issuers2 where Id = 'S0000009399';
+select * from Issuers2 where PriceDate > '2020-12-31';
+select * from Issuers2 where PriceDate = '2025-02-06';
 
 show tables;
 

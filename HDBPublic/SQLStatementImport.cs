@@ -79,7 +79,7 @@ namespace HDBPublic
 
                                 if (fieldConditions.Count % 10000 == 0)
                                 {
-                                    QueryInfo queryInfo = new QueryInfo(tableName, fieldConditions, null, null, null);
+                                    QueryInfo queryInfo = new QueryInfo(tableName, fieldConditions, null, null, null, null);
                                     m_dbClient.Add(queryInfo);
                                     fieldConditions.Clear();
                                 }
@@ -111,7 +111,7 @@ namespace HDBPublic
 
             if (fieldConditions.Count > 0)
             {
-                QueryInfo queryInfo = new QueryInfo(tableName, fieldConditions, null, null, null);
+                QueryInfo queryInfo = new QueryInfo(tableName, fieldConditions, null, null, null, null);
                 m_dbClient.Add(queryInfo);
                 fieldConditions.Clear();
             }

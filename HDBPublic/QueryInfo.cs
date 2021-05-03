@@ -7,7 +7,9 @@ namespace HDBPublic
 
     record AggregateInfo(string FieldName, string AsName, string AggregateType);
 
+    record FieldInfo(string FieldName, string AsName);
+
     record QueryInfo(string TableName, List<Dictionary<string, Tuple<Object, PredicateType>>> FieldConditions,
-        int? Limit, List<AggregateInfo> AggregateInfos, string[] GroupBys);
+        int? Limit, List<AggregateInfo> AggregateInfos, string[] GroupBys, List<FieldInfo> FieldInfos);
 
 }

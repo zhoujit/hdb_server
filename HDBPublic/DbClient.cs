@@ -3,6 +3,7 @@ namespace HDBPublic
     using System;
     using System.Collections.Generic;
     using System.Data;
+    using System.Text;
     using System.Xml;
 
 
@@ -320,6 +321,7 @@ namespace HDBPublic
 
                 if (currentCount % MaxBatchCount == 0 || currentCount == totalCount)
                 {
+                    AttachFieldSelectList(doc, queryInfo);
                     AttachGroupBy(doc, queryInfo);
                     string responseXml = SendRequest(RequestType.Request, doc.OuterXml);
                     XmlDocument docResponse = new XmlDocument();
@@ -353,6 +355,32 @@ namespace HDBPublic
                 }
             }
             return result;
+        }
+
+        private void AttachFieldSelectList(XmlDocument doc, QueryInfo queryInfo)
+        {
+            /*
+            <Msg Op='Get' Table='Issuers' Limit='2' Fields='Id,Price'>
+                <Data><Id>S001</Id></Data>
+            </Msg>
+            */
+            if (queryInfo.FieldInfos?.Count > 0)
+            {
+                XmlNode msgNode = doc.SelectSingleNode("/Msg");
+                if (msgNode != null)
+                {
+                    StringBuilder builder = new StringBuilder();
+                    foreach (var fieldInfo in queryInfo.FieldInfos)
+                    {
+                        if (builder.Length > 0)
+                        {
+                            builder.Append(",");
+                        }
+                        builder.Append(fieldInfo.FieldName);
+                    }
+                    XmlHelper.AddAttribute(msgNode, "Fields", builder.ToString());
+                }
+            }
         }
 
         private void AttachGroupBy(XmlDocument doc, QueryInfo queryInfo)

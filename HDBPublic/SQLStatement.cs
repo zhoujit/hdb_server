@@ -38,7 +38,7 @@
                     string tableName = match.Groups["TableName"].Value.Trim();
                     string whereStatement = match.Groups["Where"].Value.Trim();
                     string groupByStatement = match.Groups["GroupByList"].Value.Trim();
-                    string aggregateStatement = match.Groups["AggregateList"].Value.Trim();
+                    string fieldListStatement = match.Groups["FieldList"].Value.Trim();
                     string limitString = "";
                     if (match.Groups["Limit"].Success)
                     {
@@ -66,9 +66,10 @@
                     }
 
                     var fieldConditions = ParseWhereStatement(whereStatement);
-                    var aggregateInfos = ParseAggregateStatement(aggregateStatement);
+                    (var aggregateInfos, var fieldInfos) = ParseAggregateStatement(fieldListStatement);
                     var groupBys = groupByStatement.Split(new char[] { ',' }, StringSplitOptions.RemoveEmptyEntries);
-                    QueryInfo queryInfo = new QueryInfo(tableName, fieldConditions, limit, aggregateInfos, groupBys);
+                    CheckFieldInfoForGroupBy(fieldInfos, groupBys);
+                    QueryInfo queryInfo = new QueryInfo(tableName, fieldConditions, limit, aggregateInfos, groupBys, fieldInfos);
 
                     stepTime.Start();
                     result = m_dbClient.Query(queryInfo);
@@ -102,7 +103,7 @@ select * from t1 where f1 = 100;
                     success = FillFieldValue(fieldNameList, fieldValueList, fieldConditions, out message);
                     if (success)
                     {
-                        QueryInfo queryInfo = new QueryInfo(tableName, fieldConditions, null, null, null);
+                        QueryInfo queryInfo = new QueryInfo(tableName, fieldConditions, null, null, null, null);
                         stepTime.Start();
                         m_dbClient.Add(queryInfo);
                         stepTime.Stop();
@@ -125,7 +126,7 @@ select * from t1 where f1 = 100;
                     string whereStatement = match.Groups["Where"].Value.Trim();
 
                     List<Dictionary<string, Tuple<Object, PredicateType>>> fieldConditions = ParseWhereStatement(whereStatement);
-                    QueryInfo queryInfo = new QueryInfo(tableName, fieldConditions, null, null, null);
+                    QueryInfo queryInfo = new QueryInfo(tableName, fieldConditions, null, null, null, null);
 
                     stepTime.Start();
                     m_dbClient.Delete(queryInfo);
@@ -322,23 +323,63 @@ select * from t1 where f1 = 100;
             return (success, message, result);
         }
 
-        private List<AggregateInfo> ParseAggregateStatement(string aggregateStatement)
+        private void CheckFieldInfoForGroupBy(List<FieldInfo> fieldInfos, string[] groupBys)
         {
-            List<AggregateInfo> result = new List<AggregateInfo>();
+            if (groupBys?.Length > 0 && fieldInfos?.Count > 0)
+            {
+                HashSet<string> groupFieldSet = new HashSet<string>(groupBys);
+                foreach (var fieldInfo in fieldInfos)
+                {
+                    if (!groupFieldSet.Contains(fieldInfo.FieldName))
+                    {
+                        throw new ArgumentException($"This field {fieldInfo.FieldName} is not in group by list.");
+                    }
+                }
+            }
+        }
+
+        private Tuple<List<AggregateInfo>, List<FieldInfo>> ParseAggregateStatement(string aggregateStatement)
+        {
+            List<AggregateInfo> aggregateInfos = new List<AggregateInfo>();
+            List<FieldInfo> fieldInfos = new List<FieldInfo>();
             foreach (string aggregateLine in aggregateStatement.Split(',', StringSplitOptions.RemoveEmptyEntries))
             {
                 string temp = aggregateLine.Trim();
                 Match match = AggregateLineRegex.Match(temp);
-                if (!match.Success)
+                if (temp.Contains("(") || temp.Contains(")"))
                 {
-                    throw new ArgumentException($"Invalid aggregate function:{temp}.");
+                    if (!match.Success)
+                    {
+                        throw new ArgumentException($"Invalid aggregate function:{temp}.");
+                    }
+                }
+                else
+                {
+                    const string AS = " as ";
+                    if (temp.Contains(AS))
+                    {
+                        throw new ArgumentException($"Not supported 'as' in select list.");
+                        // string[] items = temp.Split(AS, StringSplitOptions.RemoveEmptyEntries);
+                        // if (items.Length == 2)
+                        // {
+                        //     fieldInfos.Add(new FieldInfo(items[0], items[1]));
+                        // }
+                        // else
+                        // {
+                        //     throw new ArgumentException($"Invalid field:{temp} in select list.");
+                        // }
+                    }
+                    else
+                    {
+                        fieldInfos.Add(new FieldInfo(temp, temp));
+                    }
                 }
                 string fieldName = match.Groups["FieldName"].Value;
                 string asName = match.Groups["AsName"].Value;
                 string aggregateType = match.Groups["AggregateType"].Value;
-                result.Add(new AggregateInfo(fieldName, asName, aggregateType));
+                aggregateInfos.Add(new AggregateInfo(fieldName, asName, aggregateType));
             }
-            return result;
+            return new Tuple<List<AggregateInfo>, List<FieldInfo>>(aggregateInfos, fieldInfos);
         }
 
         private List<Dictionary<string, Tuple<Object, PredicateType>>> ParseWhereStatement(string whereStatement)
@@ -735,7 +776,7 @@ select * from t1 where f1 = 100;
         private readonly static string TopNPattern = @"top\s+(?<TopN>\d{1,10})";
         private readonly static string LimitPattern = @"limit\s+(?<Limit>\d{1,10})";
         private readonly static string GroupByListPattern = @"(?<GroupByList>[0-9A-Za-z,]{1,300})";
-        private readonly static string AggregateListPattern = @"(?<AggregateList>.+)";
+        private readonly static string FieldListPattern = @"(?<FieldList>.+)";
         private readonly static string AggregateType = @"(?<AggregateType>(count)|(avg)|(sum)|(min)|(max))";
         private readonly static string AggregateLine = string.Format(@"{0}\s*\(\s*{1}\s*\)\s+as\s+{2}", AggregateType, FieldNamePattern, AsNamePattern);
 
@@ -745,7 +786,7 @@ select * from t1 where f1 = 100;
 
         private readonly static string SelectPattern = string.Format(
             @"^\s*select(\s+{1}){0}\s+((\*)|{6})\s+from\s+{2}\s+where\s+{3}(\s+{4}){0}(\s+group\s+by\s+{5}){0}\s*$",
-            Optional, TopNPattern, TableNamePattern, SelectWherePattern, LimitPattern, GroupByListPattern, AggregateListPattern);
+            Optional, TopNPattern, TableNamePattern, SelectWherePattern, LimitPattern, GroupByListPattern, FieldListPattern);
 
         private readonly static string InsertPattern = string.Format(@"insert\s+into\s+{0}\s*\(\s*(?<FieldNameList>.+)\s*\)\s+values\s*\((?<FieldValueList>.+)\s*\)",
             TableNamePattern);
