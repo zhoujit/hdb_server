@@ -9,7 +9,12 @@ namespace HDBPublic
 
     record FieldInfo(string FieldName, string AsName);
 
-    record QueryInfo(string TableName, List<Dictionary<string, Tuple<Object, PredicateType>>> FieldConditions,
-        int? Limit, List<AggregateInfo> AggregateInfos, string[] GroupBys, List<FieldInfo> FieldInfos);
+    record QueryInfo(string TableName,
+        List<Dictionary<string, Tuple<Object, PredicateType>>> FieldConditions,
+        int? Limit = null,
+        List<AggregateInfo> AggregateInfos = null,
+        string[] GroupBys = null,
+        List<FieldInfo> RawFieldInfos = null,
+        List<string> OutputFields = null);
 
 }

@@ -66,10 +66,10 @@
                     }
 
                     var fieldConditions = ParseWhereStatement(whereStatement);
-                    (var aggregateInfos, var fieldInfos) = ParseAggregateStatement(fieldListStatement);
+                    var (aggregateInfos, rawFieldInfos, outputFields) = ParseFieldList(fieldListStatement);
                     var groupBys = groupByStatement.Split(new char[] { ',' }, StringSplitOptions.RemoveEmptyEntries);
-                    CheckFieldInfoForGroupBy(fieldInfos, groupBys);
-                    QueryInfo queryInfo = new QueryInfo(tableName, fieldConditions, limit, aggregateInfos, groupBys, fieldInfos);
+                    CheckFieldInfoForGroupBy(rawFieldInfos, groupBys);
+                    QueryInfo queryInfo = new QueryInfo(tableName, fieldConditions, limit, aggregateInfos, groupBys, rawFieldInfos, outputFields);
 
                     stepTime.Start();
                     result = m_dbClient.Query(queryInfo);
@@ -103,7 +103,7 @@ select * from t1 where f1 = 100;
                     success = FillFieldValue(fieldNameList, fieldValueList, fieldConditions, out message);
                     if (success)
                     {
-                        QueryInfo queryInfo = new QueryInfo(tableName, fieldConditions, null, null, null, null);
+                        QueryInfo queryInfo = new QueryInfo(tableName, fieldConditions);
                         stepTime.Start();
                         m_dbClient.Add(queryInfo);
                         stepTime.Stop();
@@ -126,7 +126,7 @@ select * from t1 where f1 = 100;
                     string whereStatement = match.Groups["Where"].Value.Trim();
 
                     List<Dictionary<string, Tuple<Object, PredicateType>>> fieldConditions = ParseWhereStatement(whereStatement);
-                    QueryInfo queryInfo = new QueryInfo(tableName, fieldConditions, null, null, null, null);
+                    QueryInfo queryInfo = new QueryInfo(tableName, fieldConditions);
 
                     stepTime.Start();
                     m_dbClient.Delete(queryInfo);
@@ -323,12 +323,12 @@ select * from t1 where f1 = 100;
             return (success, message, result);
         }
 
-        private void CheckFieldInfoForGroupBy(List<FieldInfo> fieldInfos, string[] groupBys)
+        private void CheckFieldInfoForGroupBy(List<FieldInfo> rawFieldInfos, string[] groupBys)
         {
-            if (groupBys?.Length > 0 && fieldInfos?.Count > 0)
+            if (groupBys?.Length > 0 && rawFieldInfos?.Count > 0)
             {
                 HashSet<string> groupFieldSet = new HashSet<string>(groupBys);
-                foreach (var fieldInfo in fieldInfos)
+                foreach (var fieldInfo in rawFieldInfos)
                 {
                     if (!groupFieldSet.Contains(fieldInfo.FieldName))
                     {
@@ -338,10 +338,11 @@ select * from t1 where f1 = 100;
             }
         }
 
-        private Tuple<List<AggregateInfo>, List<FieldInfo>> ParseAggregateStatement(string aggregateStatement)
+        private (List<AggregateInfo> aggregateInfos, List<FieldInfo> rawFieldInfos, List<string> outputFields) ParseFieldList(string aggregateStatement)
         {
             List<AggregateInfo> aggregateInfos = new List<AggregateInfo>();
-            List<FieldInfo> fieldInfos = new List<FieldInfo>();
+            List<FieldInfo> rawFieldInfos = new List<FieldInfo>();
+            List<string> outputFields = new List<string>();
             foreach (string aggregateLine in aggregateStatement.Split(',', StringSplitOptions.RemoveEmptyEntries))
             {
                 string temp = aggregateLine.Trim();
@@ -356,13 +357,19 @@ select * from t1 where f1 = 100;
                     string asName = match.Groups["AsName"].Value;
                     string aggregateType = match.Groups["AggregateType"].Value;
                     aggregateInfos.Add(new AggregateInfo(fieldName, asName, aggregateType));
+
+                    if (outputFields.Contains(asName))
+                    {
+                        throw new Exception($"Duplicated field name: {asName}");
+                    }
+                    outputFields.Add(asName);
                 }
                 else
                 {
                     const string AS = " as ";
                     if (temp.Contains(AS))
                     {
-                        throw new ArgumentException($"Not supported 'as' in select list.");
+                        throw new ArgumentException($"Not supported 'as' in select list, except for aggregate field.");
                         // string[] items = temp.Split(AS, StringSplitOptions.RemoveEmptyEntries);
                         // if (items.Length == 2)
                         // {
@@ -375,11 +382,16 @@ select * from t1 where f1 = 100;
                     }
                     else
                     {
-                        fieldInfos.Add(new FieldInfo(temp, temp));
+                        rawFieldInfos.Add(new FieldInfo(temp, temp));
                     }
+                    if (outputFields.Contains(temp))
+                    {
+                        throw new Exception($"Duplicated field name: {temp}");
+                    }
+                    outputFields.Add(temp);
                 }
             }
-            return new Tuple<List<AggregateInfo>, List<FieldInfo>>(aggregateInfos, fieldInfos);
+            return (aggregateInfos, rawFieldInfos, outputFields);
         }
 
         private List<Dictionary<string, Tuple<Object, PredicateType>>> ParseWhereStatement(string whereStatement)

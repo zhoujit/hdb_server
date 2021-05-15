@@ -45,6 +45,7 @@ namespace HDBPublic
 
         public DataTable Query(QueryInfo queryInfo)
         {
+            (string outputFieldList, _) = GenerateInvolvedFieldInfo(queryInfo);
             DataTable result = new DataTable();
             List<string> responseResult = RequestData(OpType.Get, queryInfo);
             foreach (string responseText in responseResult)
@@ -57,9 +58,20 @@ namespace HDBPublic
                 {
                     if (result.Columns.Count == 0)
                     {
-                        foreach (XmlNode tempNode in node.ChildNodes)
+                        if (string.IsNullOrWhiteSpace(outputFieldList))
                         {
-                            result.Columns.Add(tempNode.Name);
+                            foreach (XmlNode tempNode in node.ChildNodes)
+                            {
+                                result.Columns.Add(tempNode.Name);
+                            }
+                        }
+                        else
+                        {
+                            string[] items = outputFieldList.Split(",", StringSplitOptions.RemoveEmptyEntries);
+                            foreach (string fieldName in items)
+                            {
+                                result.Columns.Add(fieldName);
+                            }
                         }
                     }
 
@@ -293,6 +305,8 @@ namespace HDBPublic
                 XmlHelper.AddAttribute(msgNode, "Limit", queryInfo.Limit.Value.ToString("0"));
             }
 
+            (string outputFieldList, string involvedFieldList) = GenerateInvolvedFieldInfo(queryInfo);
+
             List<string> result = new List<string>();
             const int ProgressCount = 10000;
             const int MaxBatchCount = 2000;
@@ -321,7 +335,7 @@ namespace HDBPublic
 
                 if (currentCount % MaxBatchCount == 0 || currentCount == totalCount)
                 {
-                    AttachFieldSelectList(doc, queryInfo);
+                    AttachInvolvedFieldInfo(doc, outputFieldList, involvedFieldList);
                     AttachGroupBy(doc, queryInfo);
                     string responseXml = SendRequest(RequestType.Request, doc.OuterXml);
                     XmlDocument docResponse = new XmlDocument();
@@ -357,30 +371,80 @@ namespace HDBPublic
             return result;
         }
 
-        private void AttachFieldSelectList(XmlDocument doc, QueryInfo queryInfo)
+        private void AttachInvolvedFieldInfo(XmlDocument doc, string outputFieldList, string involvedFieldList)
         {
             /*
-            <Msg Op='Get' Table='Issuers' Limit='2' Fields='Id,Price'>
+            <Msg Op='Get' Table='Issuers' Limit='2' InvolvedFields='Id,Price' OutputFields='Price'>
                 <Data><Id>S001</Id></Data>
             </Msg>
             */
-            if (queryInfo.FieldInfos?.Count > 0)
+            XmlNode msgNode = doc.SelectSingleNode("/Msg");
+            if (msgNode == null)
             {
-                XmlNode msgNode = doc.SelectSingleNode("/Msg");
-                if (msgNode != null)
+                return;
+            }
+
+            if (outputFieldList != null)
+            {
+                XmlHelper.AddAttribute(msgNode, "OutputFields", outputFieldList);
+            }
+            if (involvedFieldList != null)
+            {
+                XmlHelper.AddAttribute(msgNode, "InvolvedFields", involvedFieldList);
+            }
+        }
+
+        private (string outputFieldList, string involvedFieldList) GenerateInvolvedFieldInfo(QueryInfo queryInfo)
+        {
+            bool hasSelectList = queryInfo.RawFieldInfos?.Count > 0 || queryInfo.AggregateInfos?.Count > 0;
+            if (!hasSelectList)
+            {
+                return (null, null);
+            }
+
+            StringBuilder outputFieldBuilder = new StringBuilder();
+            foreach (var outputFieldName in queryInfo.OutputFields)
+            {
+                if (outputFieldBuilder.Length > 0)
                 {
-                    StringBuilder builder = new StringBuilder();
-                    foreach (var fieldInfo in queryInfo.FieldInfos)
-                    {
-                        if (builder.Length > 0)
-                        {
-                            builder.Append(",");
-                        }
-                        builder.Append(fieldInfo.FieldName);
-                    }
-                    XmlHelper.AddAttribute(msgNode, "Fields", builder.ToString());
+                    outputFieldBuilder.Append(",");
+                }
+                outputFieldBuilder.Append(outputFieldName);
+            }
+
+            HashSet<string> involvedFields = new HashSet<string>();
+            foreach (var fieldInfo in queryInfo.RawFieldInfos)
+            {
+                if (!involvedFields.Contains(fieldInfo.FieldName))
+                {
+                    involvedFields.Add(fieldInfo.FieldName);
                 }
             }
+            foreach (var aggregateInfo in queryInfo.AggregateInfos)
+            {
+                if (!involvedFields.Contains(aggregateInfo.FieldName))
+                {
+                    involvedFields.Add(aggregateInfo.FieldName);
+                }
+            }
+            foreach (var fieldCondition in queryInfo.FieldConditions)
+            {
+                foreach (string fieldName in fieldCondition.Keys)
+                {
+                    if (!involvedFields.Contains(fieldName))
+                    {
+                        involvedFields.Add(fieldName);
+                    }
+                }
+            }
+            foreach (var groupByFieldName in queryInfo.GroupBys)
+            {
+                if (!involvedFields.Contains(groupByFieldName))
+                {
+                    involvedFields.Add(groupByFieldName);
+                }
+            }
+            return (outputFieldBuilder.ToString(), string.Join(",", involvedFields));
         }
 
         private void AttachGroupBy(XmlDocument doc, QueryInfo queryInfo)

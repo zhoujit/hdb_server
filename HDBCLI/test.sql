@@ -23,6 +23,14 @@ select * from Issuers2 where Id = 'S0000009399';
 select * from Issuers2 where PriceDate > '2020-12-31';
 select * from Issuers2 where PriceDate = '2025-02-06';
 
+select top 8 Name, count(Id) as IdCount, avg(Price) as PriceAvg, sum(Price) as PriceSum, max(Id) as MaxId, min(Id) as MinId
+from Issuers2 where Id='S0000000001' or Id='S0000000002' or Id='S0000000003' limit 9 group by Name;
+
+
+select top 8 count(Id) as IdCount, avg(Price) as PriceAvg, sum(Price) as PriceSum, max(Id) as MaxId, min(Id) as MinId
+from Issuers2 where Id='S0000000001' or Id='S0000000002' or Id='S0000000003' limit 9 group by Name;
+
+
 show tables;
 
 insert into Issuers(Id, Name, Price) values('S2020', 'ARM 2020', 2020.12345),('S2021', 'ARM 2021', 2021.12345);
